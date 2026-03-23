@@ -242,8 +242,10 @@ def generar():
 
 @app.route("/")
 def index():
-    with open("templates/index.html", encoding="utf-8") as f:
-        return f.read()
+import os
+path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
+with open(path, encoding="utf-8") as f:
+    return f.read()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
