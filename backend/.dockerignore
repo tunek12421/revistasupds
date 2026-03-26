@@ -1,0 +1,45 @@
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Virtual environments
+venv
+.venv
+env
+
+# Environment and secrets
+.env
+.env.*
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+htmlcov
+.coverage
+.coverage.*
+
+# Documentation
+*.md
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+
+# Alembic versions cache
+migrations/versions/__pycache__

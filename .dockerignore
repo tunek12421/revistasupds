@@ -1,0 +1,54 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies
+node_modules
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Database volumes
+pgdata
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Docker
+docker-compose*.yml
+compose*.yaml
+!compose.yaml
+!compose.production.yaml
+
+# Logs
+*.log
+
+# Build artifacts
+dist
+build

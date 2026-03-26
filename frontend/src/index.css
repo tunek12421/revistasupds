@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef1fb;
+  --color-primary-100: #d4daf4;
+  --color-primary-200: #a9b5e9;
+  --color-primary-300: #7e90de;
+  --color-primary-400: #536bd3;
+  --color-primary-500: #223b87;
+  --color-primary-600: #1c3170;
+  --color-primary-700: #162759;
+  --color-primary-800: #101d42;
+  --color-primary-900: #0a132c;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
