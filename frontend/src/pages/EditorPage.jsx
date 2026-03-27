@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -24,10 +24,6 @@ const TOTAL_STEPS = 5;
 function countKw(str) {
   if (!str || !str.trim()) return 0;
   return str.split(",").map((k) => k.trim()).filter(Boolean).length;
-}
-
-function xe(s) {
-  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 const PAGE_W = 794;
@@ -100,20 +96,7 @@ export default function EditorPage() {
   const loadArticle = useArticleStore((s) => s.loadArticle);
   const reset = useArticleStore((s) => s.reset);
   const titleEs = useArticleStore((s) => s.titleEs);
-  const titleEn = useArticleStore((s) => s.titleEn);
   const docType = useArticleStore((s) => s.docType);
-  const authors = useArticleStore((s) => s.authors);
-  const absEs = useArticleStore((s) => s.absEs);
-  const absEn = useArticleStore((s) => s.absEn);
-  const kwEs = useArticleStore((s) => s.kwEs);
-  const kwEn = useArticleStore((s) => s.kwEn);
-  const sections = useArticleStore((s) => s.sections);
-  const refs = useArticleStore((s) => s.refs);
-  const doi = useArticleStore((s) => s.doi);
-  const lic = useArticleStore((s) => s.lic);
-  const dateReceived = useArticleStore((s) => s.dateReceived);
-  const dateAccepted = useArticleStore((s) => s.dateAccepted);
-  const datePublished = useArticleStore((s) => s.datePublished);
 
   // Load existing article
   useEffect(() => {
@@ -254,108 +237,22 @@ export default function EditorPage() {
     }
   };
 
-  // Live preview HTML — debounced to avoid scroll jumps
+  // Live preview — calls backend for exact same HTML as the PDF
   const [previewHtml, setPreviewHtml] = useState("");
-  const previewDeps = JSON.stringify([titleEs, titleEn, docType, authors, absEs, absEn, kwEs, kwEn, sections, refs, doi, lic, dateReceived, dateAccepted, datePublished]);
+  const previewDeps = JSON.stringify(collect());
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPreviewHtml(buildPreview());
-    }, 300);
+    const timer = setTimeout(async () => {
+      if (!showPreview) return;
+      try {
+        const res = await api.post("/preview-html", collect(), { responseType: "text" });
+        setPreviewHtml(res.data);
+      } catch {
+        // Silent fail on preview
+      }
+    }, 500);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewDeps]);
-
-  const buildPreview = () => {
-    const authorsHtml = authors
-      .map(
-        (a) =>
-          `<p style="margin:2px 0"><strong>${xe(a.name)}</strong>${a.inst ? ` — <em style="color:#223b87">${xe(a.inst)}</em>` : ""}${a.email ? `<br/><span style="font-size:8pt;color:#555">${xe(a.email)}</span>` : ""}${a.orcid ? `<br/><span style="font-size:7.5pt;color:#a6ce39">ORCID: ${xe(a.orcid)}</span>` : ""}</p>`
-      )
-      .join("");
-
-    let fnGlobal = 0;
-    const allFns = [];
-
-    const processText = (text, secFns) => {
-      if (!text) return "";
-      let secFnIdx = 0;
-      return text.split("\n").filter((l) => l.trim()).map((para) => {
-        let line = para.replace(/\[fn\]/gi, () => {
-          fnGlobal++;
-          const fnText = (secFns || [])[secFnIdx] || "";
-          secFnIdx++;
-          allFns.push(fnText);
-          return `<sup style="color:#223b87">${fnGlobal}</sup>`;
-        });
-        return `<p style="text-align:justify;margin-bottom:6px;font-size:10pt;line-height:1.6">${xe(line).replace(/&lt;sup style=&quot;color:#223b87&quot;&gt;(\d+)&lt;\/sup&gt;/g, '<sup style="color:#223b87">$1</sup>')}</p>`;
-      }).join("");
-    };
-
-    const renderFigBlock = (b) => {
-      let imgStyle = "";
-      if (b.imgW && b.imgH) {
-        imgStyle = `width:${b.imgW}px;height:${b.imgH}px;object-fit:fill;`;
-      } else {
-        imgStyle = `max-width:100%;object-fit:contain;`;
-      }
-      return `<div style="margin:12px 0;text-align:center;page-break-inside:avoid"><div style="font-size:9pt;margin-bottom:4px"><strong>${xe(b.tipo)} ${b.num}:</strong> ${xe(b.title)}</div>${b.src ? `<img src="${b.src}" style="${imgStyle}border:1px solid #e5e7eb;display:block;margin:0 auto"/>` : ""}${b.caption ? `<div style="font-size:8pt;color:#555;font-style:italic;margin-top:4px">${xe(b.caption)}</div>` : ""}</div>`;
-    };
-
-    const sectionsHtml = sections
-      .map((sec, i) => {
-        const blocks = sec.blocks || [{ type: "text", content: sec.content || "" }];
-        let body = `<div style="font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;margin-top:16px;margin-bottom:7px"><span style="color:#223b87">${i + 1}.</span> ${xe(sec.title).toUpperCase()}</div>`;
-        for (const block of blocks) {
-          if (block.type === "text") body += processText(block.content, sec.fns || []);
-          else if (block.type === "figure") body += renderFigBlock(block);
-        }
-        (sec.subs || []).forEach((sub, subIdx) => {
-          body += `<div style="font-family:Arial,sans-serif;font-size:10.5pt;font-weight:700;color:#223b87;margin-top:12px;margin-bottom:5px">${i + 1}.${subIdx + 1}. ${xe(sub.title)}</div>`;
-          body += processText(sub.content, []);
-        });
-        return body;
-      })
-      .join("");
-
-    const fnsHtml =
-      allFns.length > 0
-        ? `<div style="border-top:1px solid #bbb;margin-top:20px;padding-top:6px">${allFns.map((fn, i) => `<p style="font-size:7.5pt;color:#444;margin-bottom:2px"><sup>${i + 1}</sup> ${xe(fn)}</p>`).join("")}</div>`
-        : "";
-
-    const refsHtml = refs.filter(Boolean).length > 0
-      ? `<div style="margin-top:20px;padding-top:10px;border-top:1.5px solid #223b87"><div style="font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;margin-bottom:8px">Referencias</div>${refs.filter(Boolean).map((r) => `<p style="font-size:8.5pt;padding-left:1.5em;text-indent:-1.5em;margin-bottom:4px;line-height:1.45">${xe(r)}</p>`).join("")}</div>`
-      : "";
-
-    return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><style>
-body{font-family:'Times New Roman',Times,serif;margin:0;padding:24px 28px;color:#111;font-size:10pt;line-height:1.55;background:white;overflow-wrap:break-word;word-wrap:break-word;word-break:break-word}
-.hdr{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:2px solid #223b87;margin-bottom:14px}
-.hdr span{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;color:#223b87}
-</style></head><body>
-<div class="hdr"><span>Estudios Ambientales<br/><span style="font-size:6pt;letter-spacing:0.12em;font-weight:400">REVISTA LATINOAMERICANA</span></span><span style="font-size:18pt;font-weight:900">UPDS</span></div>
-<div style="font-family:Arial,sans-serif;font-style:italic;font-size:9pt;color:#223b87;margin-bottom:8px">${xe(docType)}</div>
-<div style="font-family:Arial,sans-serif;font-size:15pt;font-weight:700;color:#111;line-height:1.2;margin-bottom:4px">${xe(titleEs) || '<span style="color:#ccc">Título del artículo...</span>'}</div>
-${titleEn ? `<div style="font-family:Arial,sans-serif;font-size:10pt;font-weight:700;color:#888;line-height:1.3;margin-bottom:10px">${xe(titleEn)}</div>` : ""}
-<div style="text-align:right;margin-bottom:10px">${authorsHtml || '<p style="color:#ccc;font-size:9pt">Autores...</p>'}</div>
-<div style="display:flex;gap:14px;margin-top:10px">
-<div style="width:120px;flex-shrink:0;font-family:Arial,sans-serif;font-size:6.5pt;color:#333;line-height:1.5">
-${dateReceived ? `<div>Recibido: ${xe(dateReceived)}</div>` : ""}
-${dateAccepted ? `<div>Aceptado: ${xe(dateAccepted)}</div>` : ""}
-${datePublished ? `<div>Publicado: ${xe(datePublished)}</div>` : ""}
-<div style="margin-top:8px;font-size:6pt;color:#444">${xe(lic)}</div>
-</div>
-<div style="flex:1;min-width:0">
-${absEs ? `<div style="border:1px solid #c8cfe8;padding:8px 10px;margin-bottom:0"><p style="font-size:9pt;text-align:justify;line-height:1.5"><span style="font-family:Arial,sans-serif;font-weight:700;color:#223b87">Resumen</span>: ${xe(absEs)}</p>${kwEs ? `<div style="margin-top:5px"><span style="font-family:Arial,sans-serif;font-weight:700;font-size:9pt;color:#223b87">Palabras clave:</span> <span style="font-size:9pt;color:#333">${xe(kwEs)}</span></div>` : ""}</div>` : '<div style="border:1px solid #e5e7eb;padding:8px 10px;color:#ccc;font-size:9pt">Resumen...</div>'}
-${absEn ? `<div style="border:1px solid #c8cfe8;border-top:none;padding:8px 10px"><p style="font-size:9pt;text-align:justify;line-height:1.5"><span style="font-family:Arial,sans-serif;font-weight:700;color:#223b87">Abstract</span>: ${xe(absEn)}</p>${kwEn ? `<div style="margin-top:5px"><span style="font-family:Arial,sans-serif;font-weight:700;font-size:9pt;color:#223b87">Keywords:</span> <span style="font-size:9pt;color:#333">${xe(kwEn)}</span></div>` : ""}</div>` : ""}
-</div>
-</div>
-<div style="margin-top:16px">
-${sectionsHtml || '<p style="color:#ccc;font-size:10pt">El contenido del artículo aparecerá aquí...</p>'}
-</div>
-${fnsHtml}
-${refsHtml}
-${doi ? `<div style="margin-top:12px;font-family:Arial,sans-serif;font-size:7.5pt;color:#666;border-top:1px solid #ddd;padding-top:5px">${xe(doi)}</div>` : ""}
-</body></html>`;
-  };
+  }, [previewDeps, showPreview]);
 
   const renderStep = () => {
     switch (step) {

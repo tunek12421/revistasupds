@@ -214,8 +214,8 @@ def _process_block(
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def build_pdf(d: dict[str, Any]) -> bytes:
-    """Build a PDF from the article data dict and return raw bytes."""
+def build_html(d: dict[str, Any]) -> str:
+    """Build the HTML for the article and return it as a string."""
     _load_logos()
 
     pn = _pad2(d.get("pageStart", 1))
@@ -386,4 +386,10 @@ def build_pdf(d: dict[str, Any]) -> bytes:
         f"<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">"
         f"<style>{CSS}</style></head><body>{p1}{p2}</body></html>"
     )
+    return html_doc
+
+
+def build_pdf(d: dict[str, Any]) -> bytes:
+    """Build a PDF from the article data dict and return raw bytes."""
+    html_doc = build_html(d)
     return HTML(string=html_doc).write_pdf()
