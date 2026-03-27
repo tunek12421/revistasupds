@@ -79,7 +79,10 @@ export default function ReviewPanel() {
           />
           <SummaryItem
             label="Figuras/Cuadros/Gráficos"
-            value={store.figs.length > 0 ? `${store.figs.length} elementos` : "Ninguno (opcional)"}
+            value={(() => {
+              const count = store.sections.reduce((n, sec) => n + (sec.blocks || []).filter(b => b.type === "figure").length, 0);
+              return count > 0 ? `${count} elementos` : "Ninguno (opcional)";
+            })()}
             ok
           />
           <SummaryItem

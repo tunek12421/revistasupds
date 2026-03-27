@@ -137,16 +137,22 @@ def _fig_html(f: dict[str, Any] | None) -> str:
     if not f:
         return ""
     html = '<div class="fig-wrap">'
-    if f.get("src"):
-        html += (
-            f'<img src="{f["src"]}" style="max-width:100%;max-height:260px;'
-            f'object-fit:contain;display:block;margin:0 auto;border:1px solid #e5e7eb">'
-        )
     html += (
         f'<div class="fig-title"><strong>'
         f'{_xe(f.get("tipo", "Figura"))} {_xe(str(f.get("num", "")))} : '
         f'{_xe(f.get("title", ""))}</strong></div>'
     )
+    if f.get("src"):
+        w = f.get("width")
+        h = f.get("height")
+        if w and h:
+            img_style = f"width:{w}px;height:{h}px;object-fit:fill;"
+        else:
+            img_style = "max-width:100%;max-height:260px;object-fit:contain;"
+        html += (
+            f'<img src="{f["src"]}" style="{img_style}'
+            f'display:block;margin:0 auto;border:1px solid #e5e7eb">'
+        )
     if f.get("caption"):
         html += f'<div class="fig-cap">{_xe(f["caption"])}</div>'
     html += "</div>"
@@ -344,8 +350,8 @@ def build_pdf(d: dict[str, Any]) -> bytes:
         body += _process_block(
             sec.get("content", ""), sec.get("fns", []), fn_global, all_fns
         )
-        for sub in sec.get("subs", []):
-            body += f'<div class="sub-title">{_xe(sub.get("title", ""))}</div>'
+        for j, sub in enumerate(sec.get("subs", [])):
+            body += f'<div class="sub-title">{i + 1}.{j + 1}. {_xe(sub.get("title", ""))}</div>'
             body += _process_block(sub.get("content", ""), [], fn_global, all_fns)
 
     # References

@@ -5,14 +5,13 @@ const STEPS = [
   { num: 2, label: "Autores" },
   { num: 3, label: "Resumen" },
   { num: 4, label: "Contenido" },
-  { num: 5, label: "Figuras y refs" },
-  { num: 6, label: "Revisar" },
+  { num: 5, label: "Revisar" },
 ];
 
 export default function StepIndicator({ current }) {
   return (
     <nav className="w-full px-4 py-1.5">
-      <ol className="flex items-center justify-between max-w-2xl mx-auto">
+      <ol className="flex items-center justify-between max-w-xl mx-auto">
         {STEPS.map((step, i) => {
           const isCompleted = current > step.num;
           const isActive = current === step.num;

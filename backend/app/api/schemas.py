@@ -30,6 +30,8 @@ class FigureSchema(BaseModel):
     title: str = ""
     caption: str = ""
     src: str = ""
+    width: int | None = None
+    height: int | None = None
 
 
 class ArticlePayload(BaseModel):

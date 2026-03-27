@@ -17,10 +17,9 @@ import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
 import AbstractPanel from "../components/editor/AbstractPanel";
 import BodyPanel from "../components/editor/BodyPanel";
-import FiguresAndRefsPanel from "../components/editor/FiguresAndRefsPanel";
 import ReviewPanel from "../components/editor/ReviewPanel";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 
 function countKw(str) {
   if (!str || !str.trim()) return 0;
@@ -109,7 +108,6 @@ export default function EditorPage() {
   const kwEs = useArticleStore((s) => s.kwEs);
   const kwEn = useArticleStore((s) => s.kwEn);
   const sections = useArticleStore((s) => s.sections);
-  const figs = useArticleStore((s) => s.figs);
   const refs = useArticleStore((s) => s.refs);
   const doi = useArticleStore((s) => s.doi);
   const lic = useArticleStore((s) => s.lic);
@@ -164,8 +162,6 @@ export default function EditorPage() {
         if (data.sections.length === 0) return "Añade al menos una sección";
         if (data.sections.some((sec) => !sec.title.trim()))
           return "Todas las secciones deben tener título";
-        return "";
-      case 5:
         return "";
       default:
         return "";
@@ -236,7 +232,7 @@ export default function EditorPage() {
   };
 
   const handleGeneratePdf = async () => {
-    for (let s = 1; s <= 5; s++) {
+    for (let s = 1; s <= 4; s++) {
       const err = validateStep(s);
       if (err) { setStep(s); setStepError(err); return; }
     }
@@ -258,8 +254,18 @@ export default function EditorPage() {
     }
   };
 
-  // Live preview HTML — reactive to all store fields
-  const previewHtml = useMemo(() => {
+  // Live preview HTML — debounced to avoid scroll jumps
+  const [previewHtml, setPreviewHtml] = useState("");
+  const previewDeps = JSON.stringify([titleEs, titleEn, docType, authors, absEs, absEn, kwEs, kwEn, sections, refs, doi, lic, dateReceived, dateAccepted, datePublished]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPreviewHtml(buildPreview());
+    }, 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewDeps]);
+
+  const buildPreview = () => {
     const authorsHtml = authors
       .map(
         (a) =>
@@ -267,50 +273,46 @@ export default function EditorPage() {
       )
       .join("");
 
-    const figsMap = {};
-    for (const f of figs) {
-      figsMap[`[${(f.tipo || "FIGURA").toUpperCase()} ${f.num}]`] = f;
-    }
-
     let fnGlobal = 0;
     const allFns = [];
 
-    const processBlock = (text, secFns) => {
+    const processText = (text, secFns) => {
       if (!text) return "";
       let secFnIdx = 0;
-      return text
-        .split("\n")
-        .filter((l) => l.trim())
-        .map((para) => {
-          const markerMatch = para.trim().match(/^\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]$/i);
-          if (markerMatch) {
-            const key = `[${markerMatch[1].toUpperCase()} ${markerMatch[2]}]`;
-            const fig = figsMap[key];
-            if (fig) {
-              return `<div style="margin:16px 0;text-align:center;page-break-inside:avoid">${fig.src ? `<img src="${fig.src}" style="max-width:100%;max-height:200px;object-fit:contain;border:1px solid #e5e7eb"/>` : ""}<div style="font-size:9pt;margin-top:4px"><strong>${xe(fig.tipo)} ${fig.num}:</strong> ${xe(fig.title)}</div>${fig.caption ? `<div style="font-size:8pt;color:#555;font-style:italic">${xe(fig.caption)}</div>` : ""}</div>`;
-            }
-            return `<p style="color:#dc2626;font-style:italic">[${markerMatch[1]} ${markerMatch[2]} — no definido]</p>`;
-          }
-          let line = para.replace(/\[fn\]/gi, () => {
-            fnGlobal++;
-            const fnText = (secFns || [])[secFnIdx] || "";
-            secFnIdx++;
-            allFns.push(fnText);
-            return `<sup style="color:#223b87">${fnGlobal}</sup>`;
-          });
-          return `<p style="text-align:justify;margin-bottom:6px;font-size:10pt;line-height:1.6">${xe(line).replace(/&lt;sup style=&quot;color:#223b87&quot;&gt;(\d+)&lt;\/sup&gt;/g, '<sup style="color:#223b87">$1</sup>')}</p>`;
-        })
-        .join("");
+      return text.split("\n").filter((l) => l.trim()).map((para) => {
+        let line = para.replace(/\[fn\]/gi, () => {
+          fnGlobal++;
+          const fnText = (secFns || [])[secFnIdx] || "";
+          secFnIdx++;
+          allFns.push(fnText);
+          return `<sup style="color:#223b87">${fnGlobal}</sup>`;
+        });
+        return `<p style="text-align:justify;margin-bottom:6px;font-size:10pt;line-height:1.6">${xe(line).replace(/&lt;sup style=&quot;color:#223b87&quot;&gt;(\d+)&lt;\/sup&gt;/g, '<sup style="color:#223b87">$1</sup>')}</p>`;
+      }).join("");
+    };
+
+    const renderFigBlock = (b) => {
+      let imgStyle = "";
+      if (b.imgW && b.imgH) {
+        imgStyle = `width:${b.imgW}px;height:${b.imgH}px;object-fit:fill;`;
+      } else {
+        imgStyle = `max-width:100%;object-fit:contain;`;
+      }
+      return `<div style="margin:12px 0;text-align:center;page-break-inside:avoid"><div style="font-size:9pt;margin-bottom:4px"><strong>${xe(b.tipo)} ${b.num}:</strong> ${xe(b.title)}</div>${b.src ? `<img src="${b.src}" style="${imgStyle}border:1px solid #e5e7eb;display:block;margin:0 auto"/>` : ""}${b.caption ? `<div style="font-size:8pt;color:#555;font-style:italic;margin-top:4px">${xe(b.caption)}</div>` : ""}</div>`;
     };
 
     const sectionsHtml = sections
       .map((sec, i) => {
+        const blocks = sec.blocks || [{ type: "text", content: sec.content || "" }];
         let body = `<div style="font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;margin-top:16px;margin-bottom:7px"><span style="color:#223b87">${i + 1}.</span> ${xe(sec.title).toUpperCase()}</div>`;
-        body += processBlock(sec.content, sec.fns || []);
-        for (const sub of sec.subs || []) {
-          body += `<div style="font-family:Arial,sans-serif;font-size:10.5pt;font-weight:700;color:#223b87;margin-top:12px;margin-bottom:5px">${xe(sub.title)}</div>`;
-          body += processBlock(sub.content, []);
+        for (const block of blocks) {
+          if (block.type === "text") body += processText(block.content, sec.fns || []);
+          else if (block.type === "figure") body += renderFigBlock(block);
         }
+        (sec.subs || []).forEach((sub, subIdx) => {
+          body += `<div style="font-family:Arial,sans-serif;font-size:10.5pt;font-weight:700;color:#223b87;margin-top:12px;margin-bottom:5px">${i + 1}.${subIdx + 1}. ${xe(sub.title)}</div>`;
+          body += processText(sub.content, []);
+        });
         return body;
       })
       .join("");
@@ -353,7 +355,7 @@ ${fnsHtml}
 ${refsHtml}
 ${doi ? `<div style="margin-top:12px;font-family:Arial,sans-serif;font-size:7.5pt;color:#666;border-top:1px solid #ddd;padding-top:5px">${xe(doi)}</div>` : ""}
 </body></html>`;
-  }, [titleEs, titleEn, docType, authors, absEs, absEn, kwEs, kwEn, sections, figs, refs, doi, lic, dateReceived, dateAccepted, datePublished]);
+  };
 
   const renderStep = () => {
     switch (step) {
@@ -361,8 +363,7 @@ ${doi ? `<div style="margin-top:12px;font-family:Arial,sans-serif;font-size:7.5p
       case 2: return <AuthorsPanel />;
       case 3: return <AbstractPanel />;
       case 4: return <BodyPanel />;
-      case 5: return <FiguresAndRefsPanel />;
-      case 6: return <ReviewPanel />;
+      case 5: return <ReviewPanel />;
       default: return null;
     }
   };
