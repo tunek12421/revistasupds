@@ -30,8 +30,10 @@ const PAGE_W = 794;
 
 function PreviewPane({ html }) {
   const containerRef = useRef(null);
+  const iframeRef = useRef(null);
   const [scale, setScale] = useState(0.5);
   const [containerH, setContainerH] = useState(600);
+  const initialized = useRef(false);
 
   const recalc = useCallback(() => {
     const c = containerRef.current;
@@ -47,6 +49,36 @@ function PreviewPane({ html }) {
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, [recalc]);
+
+  // Write HTML into iframe without resetting scroll
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !html) return;
+
+    if (!initialized.current) {
+      // First load: use srcdoc approach
+      iframe.srcdoc = html;
+      initialized.current = true;
+    } else {
+      // Subsequent updates: write directly to preserve scroll
+      try {
+        const doc = iframe.contentDocument;
+        if (doc) {
+          const scrollY = doc.documentElement?.scrollTop || doc.body?.scrollTop || 0;
+          doc.open();
+          doc.write(html);
+          doc.close();
+          // Restore scroll position
+          requestAnimationFrame(() => {
+            if (doc.documentElement) doc.documentElement.scrollTop = scrollY;
+            if (doc.body) doc.body.scrollTop = scrollY;
+          });
+        }
+      } catch {
+        iframe.srcdoc = html;
+      }
+    }
+  }, [html]);
 
   return (
     <aside className="w-1/2 border-l border-gray-200 bg-gray-100 overflow-hidden flex flex-col">
@@ -68,8 +100,8 @@ function PreviewPane({ html }) {
           }}
         >
           <iframe
+            ref={iframeRef}
             title="live-preview"
-            srcDoc={html}
             className="border-0 bg-white"
             style={{ width: PAGE_W, height: containerH / scale }}
           />
@@ -92,11 +124,8 @@ export default function EditorPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const contentRef = useRef(null);
 
-  const collect = useArticleStore((s) => s.collect);
-  const loadArticle = useArticleStore((s) => s.loadArticle);
-  const reset = useArticleStore((s) => s.reset);
-  const titleEs = useArticleStore((s) => s.titleEs);
-  const docType = useArticleStore((s) => s.docType);
+  const store = useArticleStore();
+  const { collect, loadArticle, reset, titleEs, docType } = store;
 
   // Load existing article
   useEffect(() => {

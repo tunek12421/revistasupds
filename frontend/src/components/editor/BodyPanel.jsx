@@ -268,6 +268,33 @@ function FigureBlock({ block, sectionIndex, blockIndex }) {
   );
 }
 
+function FootnoteBlock({ block, sectionIndex, blockIndex, fnNumber }) {
+  const updateBlock = useArticleStore((s) => s.updateBlock);
+  const removeBlock = useArticleStore((s) => s.removeBlock);
+
+  return (
+    <div className="border border-amber-200 bg-amber-50/50 rounded-lg px-3 py-2 my-1 flex items-start gap-2 group relative">
+      <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0">
+        <sup>{fnNumber}</sup>
+      </span>
+      <input
+        type="text"
+        value={block.text}
+        onChange={(e) => updateBlock(sectionIndex, blockIndex, { text: e.target.value })}
+        className="flex-1 rounded border border-amber-200 bg-white px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
+        placeholder="Texto que aparecerá al pie de página..."
+      />
+      <button
+        onClick={() => removeBlock(sectionIndex, blockIndex)}
+        className="p-1 rounded text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+        title="Eliminar nota"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
 function TextBlock({ block, sectionIndex, blockIndex }) {
   const updateBlock = useArticleStore((s) => s.updateBlock);
 
@@ -286,7 +313,7 @@ function TextBlock({ block, sectionIndex, blockIndex }) {
 
 function InsertBar({ sectionIndex, afterBlockIndex }) {
   const insertFigureBlock = useArticleStore((s) => s.insertFigureBlock);
-  const addFootnote = useArticleStore((s) => s.addFootnote);
+  const insertFootnoteBlock = useArticleStore((s) => s.insertFootnoteBlock);
   const [open, setOpen] = useState(false);
 
   return (
@@ -323,7 +350,7 @@ function InsertBar({ sectionIndex, afterBlockIndex }) {
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
           <button
             onClick={() => {
-              addFootnote(sectionIndex);
+              insertFootnoteBlock(sectionIndex, afterBlockIndex);
               setOpen(false);
             }}
             className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:bg-amber-50 px-2 py-1 rounded transition"
@@ -344,8 +371,6 @@ export default function BodyPanel() {
   const addSubsection = useArticleStore((s) => s.addSubsection);
   const removeSubsection = useArticleStore((s) => s.removeSubsection);
   const updateSubsection = useArticleStore((s) => s.updateSubsection);
-  const removeFootnote = useArticleStore((s) => s.removeFootnote);
-  const updateFootnote = useArticleStore((s) => s.updateFootnote);
   const updateSection = useArticleStore((s) => s.updateSection);
   const addRef = useArticleStore((s) => s.addRef);
   const removeRef = useArticleStore((s) => s.removeRef);
@@ -425,52 +450,27 @@ export default function BodyPanel() {
 
                   {/* Content blocks */}
                   <div className="space-y-0">
-                    {blocks.map((block, bIdx) => (
-                      <div key={bIdx}>
-                        {block.type === "text" && (
-                          <TextBlock block={block} sectionIndex={sIdx} blockIndex={bIdx} />
-                        )}
-                        {block.type === "figure" && (
-                          <FigureBlock block={block} sectionIndex={sIdx} blockIndex={bIdx} />
-                        )}
-                        <InsertBar sectionIndex={sIdx} afterBlockIndex={bIdx} />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Footnotes */}
-                  {section.fns && section.fns.length > 0 && (
-                    <div className="border-t border-gray-100 pt-3">
-                      <h4 className="text-xs font-semibold text-amber-700 mb-2">
-                        Notas al pie
-                      </h4>
-                      <div className="space-y-1.5">
-                        {section.fns.map((fn, fnIdx) => (
-                          <div key={fnIdx} className="flex items-start gap-2">
-                            <span className="text-[10px] text-amber-600 bg-amber-100 px-1.5 py-1 rounded font-bold mt-0.5">
-                              {fnIdx + 1}
-                            </span>
-                            <input
-                              type="text"
-                              value={fn}
-                              onChange={(e) => updateFootnote(sIdx, fnIdx, e.target.value)}
-                              className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400"
-                              placeholder="Texto de la nota al pie..."
-                            />
-                            <button
-                              onClick={() => removeFootnote(sIdx, fnIdx)}
-                              className="p-1 text-gray-400 hover:text-red-500 transition"
-                            >
-                              <Trash2 size={12} />
-                            </button>
+                    {(() => {
+                      let fnCount = 0;
+                      return blocks.map((block, bIdx) => {
+                        if (block.type === "footnote") fnCount++;
+                        return (
+                          <div key={bIdx}>
+                            {block.type === "text" && (
+                              <TextBlock block={block} sectionIndex={sIdx} blockIndex={bIdx} />
+                            )}
+                            {block.type === "figure" && (
+                              <FigureBlock block={block} sectionIndex={sIdx} blockIndex={bIdx} />
+                            )}
+                            {block.type === "footnote" && (
+                              <FootnoteBlock block={block} sectionIndex={sIdx} blockIndex={bIdx} fnNumber={fnCount} />
+                            )}
+                            <InsertBar sectionIndex={sIdx} afterBlockIndex={bIdx} />
                           </div>
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-1.5">
-                        Escriba <code className="bg-gray-100 px-1 rounded">[fn]</code> en el texto donde va cada nota.
-                      </p>
-                    </div>
-                  )}
+                        );
+                      });
+                    })()}
+                  </div>
 
                   {/* Subsections */}
                   {section.subs && section.subs.length > 0 && (

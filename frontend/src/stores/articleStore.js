@@ -117,13 +117,25 @@ const useArticleStore = create((set, get) => ({
     }));
   },
 
-  // Insert footnote marker
-  insertFootnote: (sectionIndex) =>
+  // Insert a footnote block after a specific block index (+ text block to continue writing)
+  insertFootnoteBlock: (sectionIndex, afterBlockIndex) => {
     set((s) => ({
-      sections: s.sections.map((sec, i) =>
-        i === sectionIndex ? { ...sec, fns: [...sec.fns, ""] } : sec
-      ),
-    })),
+      sections: s.sections.map((sec, i) => {
+        if (i !== sectionIndex) return sec;
+        const blocks = [...sec.blocks];
+        // Check if next block is already a text block
+        const nextBlock = blocks[afterBlockIndex + 1];
+        const needsTextAfter = !nextBlock || nextBlock.type !== "text";
+        blocks.splice(
+          afterBlockIndex + 1,
+          0,
+          { type: "footnote", text: "" },
+          ...(needsTextAfter ? [{ type: "text", content: "" }] : [])
+        );
+        return { ...sec, blocks };
+      }),
+    }));
+  },
 
   // Subsections
   addSubsection: (sectionIndex) =>
@@ -193,9 +205,17 @@ const useArticleStore = create((set, get) => ({
     const figs = [];
     const sections = s.sections.map((sec) => {
       let content = "";
+      const fns = [];
+      let lastWasFootnote = false;
       for (const block of sec.blocks || []) {
         if (block.type === "text") {
-          content += (content && !content.endsWith("\n") ? "\n" : "") + block.content;
+          if (lastWasFootnote) {
+            // Continue on same line after a footnote (no line break)
+            content += block.content;
+          } else {
+            content += (content && !content.endsWith("\n") ? "\n" : "") + block.content;
+          }
+          lastWasFootnote = false;
         } else if (block.type === "figure") {
           figs.push({
             tipo: block.tipo,
@@ -209,12 +229,18 @@ const useArticleStore = create((set, get) => ({
           content +=
             (content && !content.endsWith("\n") ? "\n" : "") +
             `[${block.tipo.toUpperCase()} ${block.num}]`;
+          lastWasFootnote = false;
+        } else if (block.type === "footnote") {
+          fns.push(block.text || "");
+          // Append [fn] inline (no line break)
+          content += "[fn]";
+          lastWasFootnote = true;
         }
       }
       return {
         title: sec.title,
         content,
-        fns: sec.fns,
+        fns,
         subs: sec.subs,
       };
     });
@@ -255,14 +281,38 @@ const useArticleStore = create((set, get) => ({
     const sections = (data.sections || []).map((sec) => {
       const blocks = [];
       const lines = (sec.content || "").split("\n");
+      const secFns = sec.fns || [];
+      let fnIdx = 0;
       let textBuf = "";
+
+      const flushText = () => {
+        if (textBuf.trim()) {
+          // Extract [fn] markers from text and convert to footnote blocks
+          const parts = textBuf.split(/(\[fn\])/gi);
+          let cleanText = "";
+          for (const part of parts) {
+            if (/^\[fn\]$/i.test(part)) {
+              if (cleanText.trim()) {
+                blocks.push({ type: "text", content: cleanText.trim() });
+                cleanText = "";
+              }
+              blocks.push({ type: "footnote", text: secFns[fnIdx] || "" });
+              fnIdx++;
+            } else {
+              cleanText += part;
+            }
+          }
+          if (cleanText.trim()) {
+            blocks.push({ type: "text", content: cleanText.trim() });
+          }
+          textBuf = "";
+        }
+      };
+
       for (const line of lines) {
         const match = line.trim().match(/^\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]$/i);
         if (match) {
-          if (textBuf.trim()) {
-            blocks.push({ type: "text", content: textBuf.trim() });
-            textBuf = "";
-          }
+          flushText();
           const key = `[${match[1].toUpperCase()} ${match[2]}]`;
           const fig = figsByKey[key];
           blocks.push({
@@ -277,9 +327,9 @@ const useArticleStore = create((set, get) => ({
           textBuf += (textBuf ? "\n" : "") + line;
         }
       }
-      if (textBuf.trim()) blocks.push({ type: "text", content: textBuf.trim() });
+      flushText();
       if (blocks.length === 0) blocks.push({ type: "text", content: "" });
-      return { title: sec.title, blocks, fns: sec.fns || [], subs: sec.subs || [] };
+      return { title: sec.title, blocks, fns: [], subs: sec.subs || [] };
     });
     set({ ...data, sections, figs: undefined });
   },
