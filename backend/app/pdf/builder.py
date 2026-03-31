@@ -7,6 +7,7 @@ journal formatting.
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 from pathlib import Path
@@ -18,10 +19,10 @@ from weasyprint import HTML
 # Paths
 # ---------------------------------------------------------------------------
 _DIR = Path(__file__).resolve().parent
-_LOGOS_PATH = _DIR / "logos.json"
+_IMG_DIR = _DIR / "img"
 
 # ---------------------------------------------------------------------------
-# Load base-64 logos once at import time
+# Load logos once at import time (from image files)
 # ---------------------------------------------------------------------------
 _logos: dict[str, str] = {}
 
@@ -30,12 +31,14 @@ def _load_logos() -> None:
     global _logos
     if _logos:
         return
-    with open(_LOGOS_PATH, encoding="utf-8") as fh:
-        raw = json.load(fh)
-    _logos["revista"] = f"data:image/png;base64,{raw['revista']}"
-    _logos["upds"] = f"data:image/png;base64,{raw['upds']}"
-    _logos["cc"] = f"data:image/png;base64,{raw['cc']}"
-    _logos["orcid"] = f"data:image/png;base64,{raw['orcid']}"
+    for name in ("revista", "upds", "cc", "orcid"):
+        for ext in ("png", "jpg", "jpeg"):
+            path = _IMG_DIR / f"{name}.{ext}"
+            if path.exists():
+                mime = "image/jpeg" if ext in ("jpg", "jpeg") else "image/png"
+                b64 = base64.b64encode(path.read_bytes()).decode()
+                _logos[name] = f"data:{mime};base64,{b64}"
+                break
 
 
 # ---------------------------------------------------------------------------

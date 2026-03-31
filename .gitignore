@@ -14,8 +14,7 @@ frontend/dist/
 .env.*
 !.env.example
 
-# Logos (large base64 file)
-logos.json
+# Logos base64 JSON (legacy, replaced by img/ files)
 backend/app/pdf/logos.json
 
 # Database
@@ -34,12 +33,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Legacy files (old Flask app)
-app.py
-templates/
-requirements.txt
-runtime.txt
-Procfile
-render.yaml
-build.sh
