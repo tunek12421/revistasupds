@@ -18,11 +18,11 @@ function SummaryItem({ label, value, ok }) {
       ) : (
         <AlertCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
       )}
-      <div>
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+      <div className="min-w-0">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block truncate">
           {label}
         </span>
-        <p className={`text-sm ${ok ? "text-gray-800" : "text-amber-600"}`}>
+        <p className={`text-sm break-words ${ok ? "text-gray-800" : "text-amber-600"}`}>
           {value || "Sin completar"}
         </p>
       </div>

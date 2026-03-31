@@ -142,7 +142,7 @@ const useArticleStore = create((set, get) => ({
     set((s) => ({
       sections: s.sections.map((sec, i) =>
         i === sectionIndex
-          ? { ...sec, subs: [...sec.subs, { title: "", content: "" }] }
+          ? { ...sec, subs: [...sec.subs, { title: "", blocks: [{ type: "text", content: "" }] }] }
           : sec
       ),
     })),
@@ -237,11 +237,49 @@ const useArticleStore = create((set, get) => ({
           lastWasFootnote = true;
         }
       }
+      const subs = (sec.subs || []).map((sub) => {
+        let subContent = "";
+        let subLastFn = false;
+        // Fallback to text content if blocks don't exist yet
+        const blocksToProcess = (sub.blocks && sub.blocks.length > 0) ? sub.blocks : [{type: "text", content: sub.content || ""}];
+        
+        for (const block of blocksToProcess) {
+          if (block.type === "text") {
+            if (subLastFn) {
+              subContent += block.content;
+            } else {
+              subContent += (subContent && !subContent.endsWith("\n") ? "\n" : "") + block.content;
+            }
+            subLastFn = false;
+          } else if (block.type === "figure") {
+            figs.push({
+              tipo: block.tipo,
+              num: block.num,
+              title: block.title,
+              caption: block.caption,
+              src: block.src,
+              width: block.imgW || null,
+              height: block.imgH || null,
+            });
+            subContent += (subContent && !subContent.endsWith("\n") ? "\n" : "") + `[${block.tipo.toUpperCase()} ${block.num}]`;
+            subLastFn = false;
+          } else if (block.type === "footnote") {
+            fns.push(block.text || "");
+            subContent += "[fn]";
+            subLastFn = true;
+          }
+        }
+        return {
+          title: sub.title,
+          content: subContent,
+        };
+      });
+
       return {
         title: sec.title,
         content,
         fns,
-        subs: sec.subs,
+        subs,
       };
     });
     return {
@@ -278,16 +316,14 @@ const useArticleStore = create((set, get) => ({
     for (const f of data.figs || []) {
       figsByKey[`[${(f.tipo || "FIGURA").toUpperCase()} ${f.num}]`] = f;
     }
-    const sections = (data.sections || []).map((sec) => {
+
+    const parseContentToBlocks = (contentStr, fnsArray, fnIdxRef) => {
       const blocks = [];
-      const lines = (sec.content || "").split("\n");
-      const secFns = sec.fns || [];
-      let fnIdx = 0;
+      const lines = (contentStr || "").split("\n");
       let textBuf = "";
 
       const flushText = () => {
         if (textBuf.trim()) {
-          // Extract [fn] markers from text and convert to footnote blocks
           const parts = textBuf.split(/(\[fn\])/gi);
           let cleanText = "";
           for (const part of parts) {
@@ -296,8 +332,8 @@ const useArticleStore = create((set, get) => ({
                 blocks.push({ type: "text", content: cleanText.trim() });
                 cleanText = "";
               }
-              blocks.push({ type: "footnote", text: secFns[fnIdx] || "" });
-              fnIdx++;
+              blocks.push({ type: "footnote", text: fnsArray[fnIdxRef.current] || "" });
+              fnIdxRef.current++;
             } else {
               cleanText += part;
             }
@@ -329,7 +365,26 @@ const useArticleStore = create((set, get) => ({
       }
       flushText();
       if (blocks.length === 0) blocks.push({ type: "text", content: "" });
-      return { title: sec.title, blocks, fns: [], subs: sec.subs || [] };
+      
+      return blocks;
+    };
+
+    const sections = (data.sections || []).map((sec) => {
+      const secFns = sec.fns || [];
+      const fnIdxRef = { current: 0 }; // Using object to pass by reference to the parser
+
+      // Parse main section
+      const blocks = parseContentToBlocks(sec.content || "", secFns, fnIdxRef);
+
+      // Parse subsections
+      const parsedSubs = (sec.subs || []).map(sub => {
+        return {
+          title: sub.title,
+          blocks: parseContentToBlocks(sub.content || "", secFns, fnIdxRef)
+        };
+      });
+
+      return { title: sec.title, blocks, fns: [], subs: parsedSubs };
     });
     set({ ...data, sections, figs: undefined });
   },

@@ -82,6 +82,7 @@ CSS = (
     ".footer a{color:#223b87;text-decoration:none}"
     ".page-inner{width:794px;height:1123px;padding:48px 52px 68px 52px;position:relative;page-break-after:always;overflow:hidden}"
     ".body-wrap{margin-left:154px}"
+    ".body-wrap > :first-child{margin-top:0!important}"
     ".sec-title{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;color:#111;text-transform:uppercase;letter-spacing:.03em;margin-top:16px;margin-bottom:7px}"
     ".sec-num{color:#223b87;margin-right:2px}"
     ".sub-title{font-family:Arial,sans-serif;font-size:10.5pt;font-weight:700;color:#223b87;margin-top:12px;margin-bottom:5px}"
@@ -89,12 +90,46 @@ CSS = (
     ".fig-wrap{margin:16px 0;text-align:center;page-break-inside:avoid}"
     ".fig-title{font-family:Arial,sans-serif;font-size:9pt;color:#111;margin-top:6px;text-align:left}"
     ".fig-cap{font-family:Arial,sans-serif;font-size:8pt;color:#555;font-style:italic;margin-top:3px;text-align:left}"
-    ".fn-area{position:absolute;bottom:48px;left:206px;right:52px;border-top:1px solid #bbb;padding-top:5px}"
+    ".fn-area{margin-left:154px;margin-top:20px;page-break-inside:avoid;border-top:1px solid #bbb;padding-top:5px}"
     ".fn-item{font-size:7.5pt;font-family:Arial,sans-serif;color:#444;line-height:1.4;margin-bottom:3px;text-align:justify}"
     "sup{font-size:6pt;vertical-align:super}"
     ".refs-wrap{margin-left:154px;margin-top:20px;padding-top:11px;border-top:1.5px solid #223b87}"
     ".refs-title{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;color:#111;margin-bottom:8px}"
-    ".ref-item{font-size:8.5pt;margin-bottom:5px;text-align:justify;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222}"
+    ".ref-item{font-size:8.5pt;margin-bottom:5px;text-align:justify;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222;overflow-wrap:break-word}"
+    "@media print {"
+    " .page { page: main-page; }"
+    " .page-inner { page: b-page; display:block!important; height:auto!important; overflow:visible!important; padding:0!important; width:auto!important; box-decoration-break:clone; -webkit-box-decoration-break:clone; margin: 0!important; }"
+    " .fixed-hdr { position: running(hdr); width: 690px; }"
+    " .fixed-ftr { position: running(ftr); width: 690px; }"
+    " .footer-print { border-top:1px solid #ddd; padding-top:5px; display:flex; justify-content:space-between; font-family:Arial,sans-serif; font-size:7.5pt; color:#666; }"
+    " .footer-print a { color:#223b87; text-decoration:none; }"
+    " .screen-only { display:none!important; }"
+    "}"
+    "@page main-page {"
+    "  margin: 0;"
+    "}"
+    "@page b-page {"
+    "  margin: 128px 52px 68px 52px;"
+    "  @top-center { content: element(hdr); vertical-align: top; padding-top: 48px; }"
+    "  @bottom-center { content: element(ftr); vertical-align: bottom; padding-bottom: 20px; }"
+    "  @bottom-left {"
+    "    content: counter(page, decimal-leading-zero);"
+    "    margin-left: 0;"
+    "    width: 138px;"
+    "    text-align: center;"
+    "    font-family: Arial,sans-serif;"
+    "    font-size: 68pt;"
+    "    font-weight: 900;"
+    "    color: #e8ecf5;"
+    "    line-height: 1;"
+    "    letter-spacing: -4px;"
+    "    vertical-align: bottom;"
+    "    padding-bottom: 54px;"
+    "  }"
+    "}"
+    "@media screen {"
+    " .print-only { display:none!important; }"
+    "}"
 )
 
 
@@ -375,19 +410,28 @@ def build_html(d: dict[str, Any]) -> str:
     # ── Page 2+ (body) ──
     pg2 = _pad2(int(d.get("pageStart", 1)) + 1)
     p2 = ""
-    if d.get("sections"):
+    if d.get("sections") or d.get("refs"):
+        hdr_html = _build_hdr()
         p2 = (
             f'<div class="page-inner">'
-            + _build_hdr()
+            + f'<div class="print-only fixed-hdr">{hdr_html}</div>'
+            + f'<div class="print-only fixed-ftr">'
+            + f'<div class="footer-print"><span>{fl}</span><span>{fr}</span></div>'
+            + f'</div>'
+            + f'<div class="screen-only hdr-wrap">{hdr_html}</div>'
             + f'<div class="body-wrap">{body}</div>'
             + fn_html
-            + f'<div class="pg-num">{pg2}</div>'
-            + f'<div class="footer"><span>{fl}</span><span>{fr}</span></div></div>'
+            + f'<div class="screen-only pg-num">{pg2}</div>'
+            + f'<div class="screen-only footer"><span>{fl}</span><span>{fr}</span></div></div>'
         )
 
+    reset_val = int(d.get("pageStart", 1)) - 1
+    
     html_doc = (
         f"<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">"
-        f"<style>{CSS}</style></head><body>{p1}{p2}</body></html>"
+        f"<style>{CSS}</style>"
+        f"<style>@media print {{ body {{ counter-reset: page {reset_val}; }} }}</style>"
+        f"</head><body>{p1}{p2}</body></html>"
     )
     return html_doc
 

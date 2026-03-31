@@ -18,3 +18,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.tiptap p {
+  margin-bottom: 0.75rem;
+}
+.tiptap p:last-child {
+  margin-bottom: 0;
+}

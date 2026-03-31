@@ -69,6 +69,7 @@ class ArticleResponse(BaseModel):
     title_en: str | None
     doc_type: str
     status: str
+    data: dict | None = None
     created_at: datetime
     updated_at: datetime
 

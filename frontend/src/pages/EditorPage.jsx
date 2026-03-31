@@ -55,9 +55,130 @@ function PreviewPane({ html }) {
     const iframe = iframeRef.current;
     if (!iframe || !html) return;
 
+    const modifiedHtml = html.replace('</body>', `
+      <style>
+        body { background: #e5e7eb; padding: 20px 0; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-x: hidden; }
+        .body-wrap img { max-height: 800px; max-width: 100%; object-fit: contain; }
+        .page, .page-inner {
+          flex-shrink: 0;
+          background-color: white;
+          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        }
+      </style>
+      <script>
+        var isPaginating = false;
+
+        function resizeFlowPages() {
+          if (isPaginating) return;
+          isPaginating = true;
+          
+          var currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+
+          var originalPage = document.querySelector('.page-inner:not(.cloned-page)');
+          if (originalPage) {
+              var originalBodyWrap = originalPage.querySelector('.body-wrap');
+              if (originalBodyWrap) {
+                  document.querySelectorAll('.cloned-page').forEach(function(p) {
+                      var bw = p.querySelector('.body-wrap');
+                      if (bw) {
+                          while (bw.firstChild) {
+                              originalBodyWrap.appendChild(bw.firstChild);
+                          }
+                      }
+                      p.remove();
+                  });
+
+                  var children = Array.from(originalBodyWrap.childNodes);
+                  var fragment = document.createDocumentFragment();
+                  children.forEach(function(c) { fragment.appendChild(c); });
+
+                  var currentPage = originalPage;
+                  var currentBodyWrap = originalBodyWrap;
+                  
+                  var pgNumEl = currentPage.querySelector('.pg-num');
+                  var pgNum = (pgNumEl && pgNumEl.innerText) ? (parseInt(pgNumEl.innerText, 10) || 2) : 2;
+                  if (pgNumEl && !pgNumEl.innerText) pgNumEl.innerText = pgNum.toString().padStart(2, "0");
+                  
+                  for (var i = 0; i < children.length; i++) {
+                      var node = children[i];
+                      currentBodyWrap.appendChild(node);
+                      
+                      if (currentPage.scrollHeight > 1124 && currentBodyWrap.childNodes.length > 1) {
+                          currentBodyWrap.removeChild(node);
+                          
+                          var newPage = currentPage.cloneNode(false);
+                          newPage.classList.add('cloned-page');
+                          newPage.innerHTML = currentPage.innerHTML;
+                          
+                          var newBodyWrap = newPage.querySelector('.body-wrap');
+                          if (newBodyWrap) newBodyWrap.innerHTML = '';
+                          
+                          var fnArea = newPage.querySelector('.fn-area');
+                          if (fnArea) fnArea.remove();
+                          
+                          pgNum++;
+                          var newPgNum = newPage.querySelector('.pg-num');
+                          if (newPgNum) newPgNum.innerText = pgNum.toString().padStart(2, '0');
+                          
+                          currentPage.parentNode.insertBefore(newPage, currentPage.nextSibling);
+                          
+                          currentPage = newPage;
+                          currentBodyWrap = newBodyWrap;
+                          
+                          if (currentBodyWrap) currentBodyWrap.appendChild(node);
+                      }
+                  }
+              }
+          }
+          
+          document.querySelectorAll('.page').forEach(function(page) {
+              if (page.classList.contains('page') && !page.classList.contains('page-inner')) {
+                 var p1Left = page.querySelector('.p1-left');
+                 if (p1Left) {
+                    p1Left.style.paddingBottom = '80px';
+                 }
+              }
+          });
+          
+          window.scrollTo(0, currentScrollY);
+          isPaginating = false;
+          
+          document.querySelectorAll('img').forEach(function(img) {
+              if (!img.dataset.resizeListener) {
+                  img.dataset.resizeListener = 'true';
+                  if (!img.complete) {
+                      img.addEventListener('load', function() {
+                          resizeFlowPages();
+                      });
+                  }
+              }
+          });
+        }
+
+        function initPagination() {
+            resizeFlowPages();
+            document.querySelectorAll('img').forEach(function(img) {
+                if (!img.complete) {
+                    img.addEventListener('load', resizeFlowPages);
+                }
+            });
+        }
+
+        if (document.readyState === 'complete') {
+            initPagination();
+        } else {
+            window.addEventListener('load', initPagination);
+        }
+        
+        setTimeout(resizeFlowPages, 500);
+        setTimeout(resizeFlowPages, 1000);
+        setTimeout(resizeFlowPages, 2500);
+      </script>
+    </body>`);
+
     if (!initialized.current) {
       // First load: use srcdoc approach
-      iframe.srcdoc = html;
+      iframe.srcdoc = modifiedHtml;
       initialized.current = true;
     } else {
       // Subsequent updates: write directly to preserve scroll
@@ -66,7 +187,7 @@ function PreviewPane({ html }) {
         if (doc) {
           const scrollY = doc.documentElement?.scrollTop || doc.body?.scrollTop || 0;
           doc.open();
-          doc.write(html);
+          doc.write(modifiedHtml);
           doc.close();
           // Restore scroll position
           requestAnimationFrame(() => {
@@ -75,7 +196,7 @@ function PreviewPane({ html }) {
           });
         }
       } catch {
-        iframe.srcdoc = html;
+        iframe.srcdoc = modifiedHtml;
       }
     }
   }, [html]);
