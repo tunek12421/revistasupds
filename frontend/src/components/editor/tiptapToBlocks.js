@@ -68,7 +68,7 @@ export function blocksToTiptapJSON(blocks) {
     } else if (b.type === 'footnote') {
       content.push({
         type: 'footnoteNode',
-        attrs: { text: b.text || '' }
+        attrs: { text: b.text || '', num: b.num || 1 }
       });
     }
   }

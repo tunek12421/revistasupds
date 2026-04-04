@@ -59,6 +59,18 @@ function PreviewPane({ html }) {
       <style>
         body { background: #e5e7eb; padding: 20px 0; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-x: hidden; }
         .body-wrap img { max-height: 800px; max-width: 100%; object-fit: contain; }
+        .page-inner {
+          display: flex;
+          flex-direction: column;
+        }
+        .body-wrap {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .fn-area {
+          margin-top: auto !important;
+        }
         .page, .page-inner {
           flex-shrink: 0;
           background-color: white;
@@ -88,7 +100,20 @@ function PreviewPane({ html }) {
                       p.remove();
                   });
 
-                  var children = Array.from(originalBodyWrap.childNodes);
+                  var fnMap = {};
+                  originalPage.querySelectorAll('.fn-area').forEach(function(fna) {
+                      fna.querySelectorAll('.fn-item').forEach(function(item) {
+                          var sup = item.querySelector('sup');
+                          if (sup) fnMap[sup.textContent.trim()] = item.cloneNode(true);
+                      });
+                      fna.remove();
+                  });
+
+                  var childrenArr = Array.from(originalBodyWrap.childNodes);
+                  var children = childrenArr.filter(function(c) { 
+                      return !(c.classList && c.classList.contains('fn-area')); 
+                  });
+
                   var fragment = document.createDocumentFragment();
                   children.forEach(function(c) { fragment.appendChild(c); });
 
@@ -96,15 +121,51 @@ function PreviewPane({ html }) {
                   var currentBodyWrap = originalBodyWrap;
                   
                   var pgNumEl = currentPage.querySelector('.pg-num');
-                  var pgNum = (pgNumEl && pgNumEl.innerText) ? (parseInt(pgNumEl.innerText, 10) || 2) : 2;
-                  if (pgNumEl && !pgNumEl.innerText) pgNumEl.innerText = pgNum.toString().padStart(2, "0");
+                  var pgNum = (pgNumEl && pgNumEl.textContent) ? (parseInt(pgNumEl.textContent, 10) || 2) : 2;
+                  if (pgNumEl && !pgNumEl.textContent) pgNumEl.textContent = pgNum.toString().padStart(2, "0");
                   
                   for (var i = 0; i < children.length; i++) {
                       var node = children[i];
                       currentBodyWrap.appendChild(node);
                       
-                      if (currentPage.scrollHeight > 1124 && currentBodyWrap.childNodes.length > 1) {
+                      var addedNotes = [];
+                      if (node.nodeType === 1 && node.querySelectorAll) {
+                          node.querySelectorAll('sup').forEach(function(sup) {
+                              var num = sup.textContent.trim();
+                              if (fnMap[num]) addedNotes.push(num);
+                          });
+                      }
+                      
+                      if (addedNotes.length > 0) {
+                          var fna = currentBodyWrap.querySelector('.fn-area');
+                          if (!fna) { 
+                              fna = document.createElement('div'); 
+                              fna.className = 'fn-area'; 
+                              currentBodyWrap.appendChild(fna); 
+                          }
+                          addedNotes.forEach(function(num) {
+                              fna.appendChild(fnMap[num].cloneNode(true));
+                          });
+                      }
+                      
+                      var currentFna = currentBodyWrap.querySelector('.fn-area');
+                      if (currentFna) currentBodyWrap.appendChild(currentFna);
+                      
+                      var hasOtherContent = false;
+                      for (var c = 0; c < currentBodyWrap.childNodes.length; c++) {
+                          var childNode = currentBodyWrap.childNodes[c];
+                          if (childNode !== node && childNode !== currentFna) hasOtherContent = true;
+                      }
+
+                      if (currentPage.scrollHeight > 1124 && hasOtherContent) {
                           currentBodyWrap.removeChild(node);
+                          
+                          if (currentFna && addedNotes.length > 0) {
+                              for(var k=0; k<addedNotes.length; k++) {
+                                  if (currentFna.lastChild) currentFna.removeChild(currentFna.lastChild);
+                              }
+                              if (currentFna.childNodes.length === 0) currentFna.remove();
+                          }
                           
                           var newPage = currentPage.cloneNode(false);
                           newPage.classList.add('cloned-page');
@@ -113,19 +174,28 @@ function PreviewPane({ html }) {
                           var newBodyWrap = newPage.querySelector('.body-wrap');
                           if (newBodyWrap) newBodyWrap.innerHTML = '';
                           
-                          var fnArea = newPage.querySelector('.fn-area');
-                          if (fnArea) fnArea.remove();
+                          var obsoleteFna = newPage.querySelector('.fn-area');
+                          if (obsoleteFna) obsoleteFna.remove();
                           
                           pgNum++;
                           var newPgNum = newPage.querySelector('.pg-num');
-                          if (newPgNum) newPgNum.innerText = pgNum.toString().padStart(2, '0');
+                          if (newPgNum) newPgNum.textContent = pgNum.toString().padStart(2, '0');
                           
                           currentPage.parentNode.insertBefore(newPage, currentPage.nextSibling);
                           
                           currentPage = newPage;
                           currentBodyWrap = newBodyWrap;
                           
-                          if (currentBodyWrap) currentBodyWrap.appendChild(node);
+                          currentBodyWrap.appendChild(node);
+                          
+                          if (addedNotes.length > 0) {
+                              var newFna = document.createElement('div');
+                              newFna.className = 'fn-area';
+                              currentBodyWrap.appendChild(newFna);
+                              addedNotes.forEach(function(num) {
+                                  newFna.appendChild(fnMap[num].cloneNode(true));
+                              });
+                          }
                       }
                   }
               }

@@ -14,6 +14,33 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false 
     extensions: [StarterKit, FigureNode, FootnoteNode],
     content: blocksToTiptapJSON(blocks),
     onUpdate: ({ editor }) => {
+      // Autorenumber every time content changes globally
+      const tr = editor.state.tr;
+      let counts = { Figura: 1, Cuadro: 1, 'Gráfico': 1, footnote: 1 };
+      let changed = false;
+
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'figureNode') {
+          const t = node.attrs.tipo || 'Figura';
+          if (!counts[t]) counts[t] = 1;
+          if (node.attrs.num !== counts[t]) {
+            tr.setNodeMarkup(pos, null, { ...node.attrs, num: counts[t] });
+            changed = true;
+          }
+          counts[t]++;
+        } else if (node.type.name === 'footnoteNode') {
+          if (node.attrs.num !== counts.footnote) {
+            tr.setNodeMarkup(pos, null, { ...node.attrs, num: counts.footnote });
+            changed = true;
+          }
+          counts.footnote++;
+        }
+      });
+
+      if (changed) {
+        editor.view.dispatch(tr);
+      }
+
       const json = editor.getJSON();
       const newBlocks = tiptapToBlocks(json);
       if (onChange) {
@@ -32,19 +59,9 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false 
   }
 
   const insertFigure = (tipo) => {
-    // Generate next num based on all blocks
-    // In strict architecture, we should find the next number globally, but for simplicity:
-    const state = useArticleStore.getState();
-    let num = 1;
-    state.sections.forEach(sec => {
-      (sec.blocks || []).forEach(b => {
-        if (b.type === 'figure' && b.tipo === tipo) num = Math.max(num, b.num + 1);
-      });
-    });
-
     editor.chain().focus().insertContent({
       type: 'figureNode',
-      attrs: { tipo, num }
+      attrs: { tipo, num: 9999 } // temporary dummy number
     }).run();
   };
 

@@ -93,9 +93,10 @@ CSS = (
     ".fn-area{margin-left:154px;margin-top:20px;page-break-inside:avoid;border-top:1px solid #bbb;padding-top:5px}"
     ".fn-item{font-size:7.5pt;font-family:Arial,sans-serif;color:#444;line-height:1.4;margin-bottom:3px;text-align:justify}"
     "sup{font-size:6pt;vertical-align:super}"
-    ".refs-wrap{margin-left:154px;margin-top:20px;padding-top:11px;border-top:1.5px solid #223b87}"
-    ".refs-title{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;color:#111;margin-bottom:8px}"
-    ".ref-item{font-size:8.5pt;margin-bottom:5px;text-align:justify;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222;overflow-wrap:break-word}"
+    ".refs-title{margin-left:154px;margin-top:20px;padding-top:11px;border-top:1.5px solid #223b87;font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;color:#111;margin-bottom:8px}"
+    ".ref-item{margin-left:154px;font-size:8.5pt;margin-bottom:5px;text-align:justify;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222;overflow-wrap:break-word}"
+    ".fn-area{margin-left:154px;margin-top:20px;border-top:1px solid #bbb;padding-top:5px}"
+    ".fn-item{font-size:7.5pt;font-family:Arial,sans-serif;color:#444;line-height:1.4;margin-bottom:3px;text-align:justify}"
     "@media print {"
     " .page { page: main-page; }"
     " .page-inner { page: b-page; display:block!important; height:auto!important; overflow:visible!important; padding:0!important; width:auto!important; box-decoration-break:clone; -webkit-box-decoration-break:clone; margin: 0!important; }"
@@ -104,12 +105,21 @@ CSS = (
     " .footer-print { border-top:1px solid #ddd; padding-top:5px; display:flex; justify-content:space-between; font-family:Arial,sans-serif; font-size:7.5pt; color:#666; }"
     " .footer-print a { color:#223b87; text-decoration:none; }"
     " .screen-only { display:none!important; }"
+    " .fn-print { float:footnote; font-size:7.5pt; font-family:Arial,sans-serif; color:#444; line-height:1.4; margin-bottom:3px; text-align:justify; }"
+    " .fn-print::footnote-call { content:counter(footnote); font-size:6pt; vertical-align:super; }"
+    " .fn-print::footnote-marker { content:counter(footnote); font-size:6pt; vertical-align:super; margin-right:4px; }"
     "}"
     "@page main-page {"
     "  margin: 0;"
+    "  @footnote {"
+    "    border-top:1px solid #bbb; padding-top:5px; margin-top:20px; margin-left:154px;"
+    "  }"
     "}"
     "@page b-page {"
     "  margin: 128px 52px 68px 52px;"
+    "  @footnote {"
+    "    border-top:1px solid #bbb; padding-top:5px; margin-top:20px; margin-left:154px;"
+    "  }"
     "  @top-center { content: element(hdr); vertical-align: top; padding-top: 48px; }"
     "  @bottom-center { content: element(ftr); vertical-align: bottom; padding-bottom: 20px; }"
     "  @bottom-left {"
@@ -237,12 +247,20 @@ def _process_block(
             fn_global["counter"] += 1
             txt = sec_fns[sec_fn_idx[0]] if sec_fn_idx[0] < len(sec_fns) else ""
             sec_fn_idx[0] += 1
+            idx = len(all_fns)
             all_fns.append(txt)
-            return f"\x00SUP{fn_global['counter']}\x00"
+            return f"\x00SUP{fn_global['counter']}\x00{idx}\x01"
 
         line = re.sub(r"\[fn\]", replace_fn, para, flags=re.I)
         line = _xe(line)
-        line = re.sub(r"\x00SUP(\d+)\x00", r"<sup>\1</sup>", line)
+        
+        def repl(m: re.Match[str]) -> str:
+            c = m.group(1)
+            idx = int(m.group(2))
+            fn_txt = _xe(all_fns[idx])
+            return f'<span class="screen-only"><sup>{c}</sup></span><span class="print-only fn-print">{fn_txt}</span>'
+
+        line = re.sub(r"\x00SUP(\d+)\x00(\d+)\x01", repl, line)
         html += f'<p class="body-p">{line}</p>'
 
     return html
@@ -276,8 +294,8 @@ def build_html(d: dict[str, Any]) -> str:
     for a in authors:
         orcid_id = a.get("orcid", "")
         orc = (
-            f'<a href="https://orcid.org/{_xe(orcid_id)}" style="text-decoration:none">'
-            f'<img class="orcid-img" src="{_logos["orcid"]}"></a>'
+            f'<a href="https://orcid.org/{_xe(orcid_id)}" target="_blank" style="text-decoration:none">'
+            f'<img class="orcid-img" src="{_logos.get("orcid", "")}" alt="ORCID"></a>'
             if orcid_id
             else ""
         )
@@ -394,18 +412,17 @@ def build_html(d: dict[str, Any]) -> str:
 
     # References
     if d.get("refs"):
-        body += '<div class="refs-wrap"><div class="refs-title">Referencias</div>'
+        body += '<div class="refs-title">Referencias</div>'
         for r in d["refs"]:
             body += f'<p class="ref-item">{_xe(r)}</p>'
-        body += "</div>"
 
-    # Footnotes
-    fn_html = ""
+    # Footnotes (Screen Preview only)
     if all_fns:
-        fn_html = '<div class="fn-area">'
+        fn_html = '<div class="fn-area screen-only">'
         for i, fn in enumerate(all_fns):
             fn_html += f'<p class="fn-item"><sup>{i + 1}</sup> {_xe(fn)}</p>'
         fn_html += "</div>"
+        body += fn_html
 
     # ── Page 2+ (body) ──
     pg2 = _pad2(int(d.get("pageStart", 1)) + 1)
@@ -420,7 +437,6 @@ def build_html(d: dict[str, Any]) -> str:
             + f'</div>'
             + f'<div class="screen-only hdr-wrap">{hdr_html}</div>'
             + f'<div class="body-wrap">{body}</div>'
-            + fn_html
             + f'<div class="screen-only pg-num">{pg2}</div>'
             + f'<div class="screen-only footer"><span>{fl}</span><span>{fr}</span></div></div>'
         )

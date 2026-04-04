@@ -43,6 +43,7 @@ export const FootnoteNode = Node.create({
   addAttributes() {
     return {
       text: { default: '' },
+      num: { default: 1 },
     };
   },
 
