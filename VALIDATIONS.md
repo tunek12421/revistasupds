@@ -44,10 +44,10 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 
 ### Palabras Clave
 - [x] Mínimo 3, máximo 6 (ya implementado)
-- [ ] Máximo 50 caracteres por keyword
-- [ ] Máximo 4 palabras por keyword (no permitir frases largas)
+- [x] Máximo 50 caracteres por keyword
+- [x] Máximo 4 palabras por keyword (no permitir frases largas)
 - [ ] No duplicar palabras del título (advertencia, no error)
-- [ ] Validación independiente para ES y EN
+- [x] Validación independiente para ES y EN
 
 ### Autores
 - [ ] **Mínimo 1, máximo 10 autores**

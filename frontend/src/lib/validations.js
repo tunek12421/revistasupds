@@ -149,6 +149,31 @@ export function getEmailStatus(value) {
   return EMAIL_REGEX.test(value.trim()) ? "ok" : "error";
 }
 
+export function parseKeywords(str) {
+  if (!str || !str.trim()) return [];
+  return str.split(",").map((k) => k.trim()).filter(Boolean);
+}
+
+export function validateKeywords(str, label = "Palabras clave") {
+  const kws = parseKeywords(str);
+  if (kws.length < LIMITS.keywords.min) {
+    return `${label}: mínimo ${LIMITS.keywords.min} (actual: ${kws.length})`;
+  }
+  if (kws.length > LIMITS.keywords.max) {
+    return `${label}: máximo ${LIMITS.keywords.max} (actual: ${kws.length})`;
+  }
+  for (const kw of kws) {
+    if (kw.length > LIMITS.keyword.maxChars) {
+      return `${label}: "${kw.slice(0, 30)}..." excede ${LIMITS.keyword.maxChars} caracteres`;
+    }
+    const words = kw.split(/\s+/).filter(Boolean).length;
+    if (words > LIMITS.keyword.maxWords) {
+      return `${label}: "${kw}" tiene ${words} palabras (máx ${LIMITS.keyword.maxWords})`;
+    }
+  }
+  return null;
+}
+
 export function getAbstractStatus(text) {
   const words = countWords(text);
   const chars = (text || "").length;

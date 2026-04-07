@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -368,10 +368,10 @@ export default function EditorPage() {
         if (errAbsEs) return errAbsEs;
         const errAbsEn = validateAbstract(data.absEn, "Abstract en inglés");
         if (errAbsEn) return errAbsEn;
-        const kwEsN = countKw(data.kwEs);
-        const kwEnN = countKw(data.kwEn);
-        if (kwEsN < 3 || kwEsN > 6) return "Palabras clave en español: entre 3 y 6";
-        if (kwEnN < 3 || kwEnN > 6) return "Keywords en inglés: entre 3 y 6";
+        const errKwEs = validateKeywords(data.kwEs, "Palabras clave en español");
+        if (errKwEs) return errKwEs;
+        const errKwEn = validateKeywords(data.kwEn, "Keywords en inglés");
+        if (errKwEn) return errKwEn;
         return "";
       }
       case 4:

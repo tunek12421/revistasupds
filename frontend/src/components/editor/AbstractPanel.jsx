@@ -1,14 +1,6 @@
 import { useMemo } from "react";
 import useArticleStore from "../../stores/articleStore";
-import { getAbstractStatus, LIMITS } from "../../lib/validations";
-
-function countKeywords(str) {
-  if (!str || !str.trim()) return 0;
-  return str
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean).length;
-}
+import { getAbstractStatus, LIMITS, validateKeywords, parseKeywords } from "../../lib/validations";
 
 const COUNTER_COLORS = {
   empty: "text-gray-400",
@@ -32,13 +24,15 @@ function abstractTextareaClass(status) {
 export default function AbstractPanel() {
   const store = useArticleStore();
 
-  const kwEsCount = useMemo(() => countKeywords(store.kwEs), [store.kwEs]);
-  const kwEnCount = useMemo(() => countKeywords(store.kwEn), [store.kwEn]);
+  const kwEsCount = useMemo(() => parseKeywords(store.kwEs).length, [store.kwEs]);
+  const kwEnCount = useMemo(() => parseKeywords(store.kwEn).length, [store.kwEn]);
   const absEsStatus = useMemo(() => getAbstractStatus(store.absEs), [store.absEs]);
   const absEnStatus = useMemo(() => getAbstractStatus(store.absEn), [store.absEn]);
+  const kwEsErr = useMemo(() => validateKeywords(store.kwEs, "Palabras clave"), [store.kwEs]);
+  const kwEnErr = useMemo(() => validateKeywords(store.kwEn, "Keywords"), [store.kwEn]);
 
-  const kwEsValid = kwEsCount >= 3 && kwEsCount <= 6;
-  const kwEnValid = kwEnCount >= 3 && kwEnCount <= 6;
+  const kwEsValid = !kwEsErr;
+  const kwEnValid = !kwEnErr;
 
   return (
     <div className="space-y-8">
@@ -83,7 +77,9 @@ export default function AbstractPanel() {
               store.kwEs && !kwEsValid ? "text-amber-600" : "text-gray-400"
             }`}
           >
-            Separadas por comas — mínimo 3, máximo 6 ({kwEsCount}/6)
+            {store.kwEs && kwEsErr
+              ? kwEsErr
+              : `Separadas por comas — mínimo 3, máximo 6 (${kwEsCount}/6) · máx 50 chars y 4 palabras por término`}
           </p>
         </div>
       </div>
@@ -129,7 +125,9 @@ export default function AbstractPanel() {
               store.kwEn && !kwEnValid ? "text-amber-600" : "text-gray-400"
             }`}
           >
-            Separated by commas — min 3, max 6 ({kwEnCount}/6)
+            {store.kwEn && kwEnErr
+              ? kwEnErr
+              : `Separated by commas — min 3, max 6 (${kwEnCount}/6) · max 50 chars and 4 words per term`}
           </p>
         </div>
       </div>
