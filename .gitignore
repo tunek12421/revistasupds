@@ -13,6 +13,10 @@ frontend/dist/
 .env
 .env.*
 !.env.example
+!.deploy.env.example
+
+# Deploy local config (contains VPS credentials)
+.deploy.env
 
 # Logos base64 JSON (legacy, replaced by img/ files)
 backend/app/pdf/logos.json

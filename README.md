@@ -108,6 +108,12 @@ revistasupds/
 git clone https://github.com/tunek12421/revistasupds.git
 cd revistasupds
 
+# Configurar variables de entorno
+cp .env.example .env
+# Genera un SECRET_KEY fuerte y editalo en .env:
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+nano .env
+
 # Levantar todos los servicios
 docker compose up -d
 
@@ -143,30 +149,56 @@ docker compose down
 - Nginx ya corriendo en el host
 - Dominio apuntando al VPS
 - Certbot para SSL
+- Llave SSH configurada (`ssh-copy-id usuario@vps`) — recomendado en lugar de password
 
-### 2. Clonar y configurar
+### 2. Setup inicial del VPS
 
 ```bash
-git clone https://github.com/tunek12421/revistasupds.git
-cd revistasupds
+# En el VPS:
+git clone https://github.com/tunek12421/revistasupds.git /opt/earl
+cd /opt/earl
 cp .env.example .env
-# Editar .env con secrets reales (SECRET_KEY, POSTGRES_PASSWORD, CORS_ORIGINS)
+# Editar .env con valores fuertes:
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+nano .env
 ```
 
-### 3. Levantar contenedores
+### 3. Configurar Nginx del host
 
 ```bash
-docker compose -f compose.yaml -f compose.production.yaml up -d --build
-```
-
-### 4. Configurar Nginx del host
-
-```bash
+# En el VPS:
 sudo cp nginx/earl.conf /etc/nginx/sites-available/earl
 # Editar el archivo: cambiar yourdomain.com por tu dominio
 sudo ln -s /etc/nginx/sites-available/earl /etc/nginx/sites-enabled/
 sudo certbot --nginx -d tudominio.com
 sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 4. Deploy automatizado desde tu máquina local
+
+El script `deploy.sh` construye las imágenes localmente, las sube al VPS y reinicia los contenedores sin necesidad de hacer `git pull` ni `docker build` en el VPS (mucho más rápido).
+
+```bash
+# En tu máquina local, primera vez:
+cp .deploy.env.example .deploy.env
+nano .deploy.env  # configurar VPS_HOST, VPS_USER, VPS_PROJECT_DIR
+
+# Cargar variables y deployar:
+source .deploy.env
+./deploy.sh              # frontend + backend
+./deploy.sh frontend     # solo frontend
+./deploy.sh backend      # solo backend
+```
+
+**Importante**: el archivo `.deploy.env` está en `.gitignore` y NO debe subirse al repo. Contiene la IP de tu VPS y otros datos sensibles.
+
+### 5. Deploy manual (alternativo)
+
+```bash
+# En el VPS:
+cd /opt/earl
+git pull
+docker compose -f compose.yaml -f compose.production.yaml up -d --build
 ```
 
 ---
