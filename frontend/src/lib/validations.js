@@ -149,6 +149,54 @@ export function getEmailStatus(value) {
   return EMAIL_REGEX.test(value.trim()) ? "ok" : "error";
 }
 
+// Count words across all sections (text blocks + subsection content)
+export function countBodyWords(sections) {
+  if (!sections || sections.length === 0) return 0;
+  let total = 0;
+  for (const sec of sections) {
+    total += countWords(sec.title || "");
+    if (sec.blocks) {
+      for (const b of sec.blocks) {
+        if (b.type === "text") total += countWords(b.content || "");
+        else if (b.type === "footnote") total += countWords(b.text || "");
+      }
+    } else if (sec.content) {
+      total += countWords(sec.content);
+    }
+    if (sec.subs) {
+      for (const sub of sec.subs) {
+        total += countWords(sub.title || "");
+        total += countWords(sub.content || "");
+      }
+    }
+  }
+  return total;
+}
+
+export function validateBody(sections, docType) {
+  const limits = LIMITS.body[docType] || LIMITS.body["Artículo"];
+  const words = countBodyWords(sections);
+  if (words === 0) return "El cuerpo del artículo está vacío";
+  if (words < limits.min) {
+    return `Cuerpo: mínimo ${limits.min} palabras para "${docType}" (actual: ${words})`;
+  }
+  if (words > limits.max) {
+    return `Cuerpo: máximo ${limits.max} palabras para "${docType}" (actual: ${words})`;
+  }
+  return null;
+}
+
+export function getBodyStatus(sections, docType) {
+  const limits = LIMITS.body[docType] || LIMITS.body["Artículo"];
+  const words = countBodyWords(sections);
+  if (words === 0) return { words, limits, status: "empty" };
+  if (words >= limits.min && words <= limits.max) {
+    return { words, limits, status: "ok" };
+  }
+  if (words > limits.max) return { words, limits, status: "error" };
+  return { words, limits, status: "warn" };
+}
+
 export function parseKeywords(str) {
   if (!str || !str.trim()) return [];
   return str.split(",").map((k) => k.trim()).filter(Boolean);

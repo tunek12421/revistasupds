@@ -64,9 +64,9 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 | Revisión Bibliográfica | 6,000 palabras | 10,000 palabras |
 | Artículo de reflexión | 2,000 palabras | 5,000 palabras |
 
-- [ ] Contador de palabras del cuerpo en el step "Revisar"
-- [ ] Validación al generar PDF según `docType`
-- [ ] Mensaje informativo durante la edición
+- [x] Contador de palabras del cuerpo en el step "Contenido"
+- [x] Validación al generar PDF según `docType`
+- [x] Mensaje informativo durante la edición
 
 ### Referencias (según `docType`)
 

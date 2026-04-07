@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords, LIMITS as VLIMITS } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords, validateBody, LIMITS as VLIMITS } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -456,6 +456,9 @@ export default function EditorPage() {
     }
     // Step 5 (Review): validate editorial metadata
     const data = collect();
+    // Body word count for the chosen docType (only enforced when generating PDF)
+    const bodyErr = validateBody(useArticleStore.getState().sections, data.docType);
+    if (bodyErr) { setStep(4); setStepError(bodyErr); return; }
     const doiErr = validateDoi(data.doi);
     if (doiErr) { setStep(5); setStepError(`DOI: ${doiErr}`); return; }
     setGenerating(true);

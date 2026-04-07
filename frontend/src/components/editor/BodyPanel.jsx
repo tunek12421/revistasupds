@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Plus,
   Trash2,
@@ -9,10 +9,20 @@ import {
 } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
 import SectionEditor from "./SectionEditor";
+import { getBodyStatus } from "../../lib/validations";
+
+const COUNTER_COLORS = {
+  empty: "text-gray-400",
+  warn: "text-amber-600",
+  ok: "text-green-600",
+  error: "text-red-600",
+};
 
 export default function BodyPanel() {
   const sections = useArticleStore((s) => s.sections);
   const refs = useArticleStore((s) => s.refs);
+  const docType = useArticleStore((s) => s.docType);
+  const bodyStatus = useMemo(() => getBodyStatus(sections, docType), [sections, docType]);
   const addSection = useArticleStore((s) => s.addSection);
   const removeSection = useArticleStore((s) => s.removeSection);
   const addSubsection = useArticleStore((s) => s.addSubsection);
@@ -36,6 +46,9 @@ export default function BodyPanel() {
           <h2 className="text-lg font-semibold text-gray-800">Contenido</h2>
           <p className="text-xs text-gray-500">
             Secciones, figuras, notas al pie y referencias
+          </p>
+          <p className={`text-xs mt-0.5 ${COUNTER_COLORS[bodyStatus.status]}`}>
+            {bodyStatus.words} palabras · rango {bodyStatus.limits.min}-{bodyStatus.limits.max} para "{docType}"
           </p>
         </div>
         <button
