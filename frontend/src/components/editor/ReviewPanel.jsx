@@ -1,15 +1,5 @@
-import { CheckCircle, AlertCircle, Check } from "lucide-react";
+import { CheckCircle, AlertCircle, FileDown } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
-import { getDoiStatus, normalizeDoi } from "../../lib/validations";
-
-const LICENSES = [
-  { id: "CC BY 4.0", name: "CC BY 4.0", desc: "Atribución" },
-  { id: "CC BY-SA 4.0", name: "CC BY-SA 4.0", desc: "Atribución - CompartirIgual" },
-  { id: "CC BY-ND 4.0", name: "CC BY-ND 4.0", desc: "Atribución - SinDerivadas" },
-  { id: "CC BY-NC 4.0", name: "CC BY-NC 4.0", desc: "Atribución - NoComercial" },
-  { id: "CC BY-NC-SA 4.0", name: "CC BY-NC-SA 4.0", desc: "Atribución - NoComercial - CompartirIgual" },
-  { id: "CC BY-NC-ND 4.0", name: "CC BY-NC-ND 4.0", desc: "Atribución - NoComercial - SinDerivadas" },
-];
 
 function SummaryItem({ label, value, ok }) {
   return (
@@ -19,8 +9,8 @@ function SummaryItem({ label, value, ok }) {
       ) : (
         <AlertCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
       )}
-      <div className="min-w-0">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block truncate">
+      <div className="min-w-0 flex-1">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide block">
           {label}
         </span>
         <p className={`text-sm break-words ${ok ? "text-gray-800" : "text-amber-600"}`}>
@@ -40,13 +30,25 @@ export default function ReviewPanel() {
   const store = useArticleStore();
   const kwEsN = countKw(store.kwEs);
   const kwEnN = countKw(store.kwEn);
+  const figCount = store.sections.reduce(
+    (n, sec) => n + (sec.blocks || []).filter((b) => b.type === "figure").length,
+    0
+  );
+  const refsCount = store.refs.filter(Boolean).length;
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-gray-800">Revisión final</h2>
+        <p className="text-sm text-gray-500 mt-1">
+          Verifica el contenido y haz clic en "Generar PDF" para descargar el artículo formateado.
+        </p>
+      </div>
+
       {/* Summary */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-        <h3 className="text-sm font-semibold text-[#223b87] uppercase tracking-wide mb-4">
-          Resumen del artículo
+        <h3 className="text-xs font-semibold text-[#223b87] uppercase tracking-wide mb-3">
+          Información del artículo
         </h3>
         <div className="divide-y divide-gray-100">
           <SummaryItem label="Tipo" value={store.docType} ok={!!store.docType} />
@@ -61,6 +63,14 @@ export default function ReviewPanel() {
             }
             ok={store.authors.length > 0 && store.authors.every((a) => a.name.trim())}
           />
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-xs font-semibold text-[#223b87] uppercase tracking-wide mb-3">
+          Contenido
+        </h3>
+        <div className="divide-y divide-gray-100">
           <SummaryItem label="Resumen (ES)" value={store.absEs ? `${store.absEs.slice(0, 80)}...` : null} ok={!!store.absEs.trim()} />
           <SummaryItem label="Abstract (EN)" value={store.absEn ? `${store.absEn.slice(0, 80)}...` : null} ok={!!store.absEn.trim()} />
           <SummaryItem
@@ -80,157 +90,37 @@ export default function ReviewPanel() {
           />
           <SummaryItem
             label="Figuras/Cuadros/Gráficos"
-            value={(() => {
-              const count = store.sections.reduce((n, sec) => n + (sec.blocks || []).filter(b => b.type === "figure").length, 0);
-              return count > 0 ? `${count} elementos` : "Ninguno (opcional)";
-            })()}
+            value={figCount > 0 ? `${figCount} elementos` : "Ninguno (opcional)"}
             ok
           />
           <SummaryItem
             label="Referencias"
-            value={store.refs.length > 0 ? `${store.refs.filter(Boolean).length} referencias` : "Ninguna (opcional)"}
+            value={refsCount > 0 ? `${refsCount} referencias` : "Ninguna (opcional)"}
             ok
           />
         </div>
       </div>
 
-      {/* Editorial metadata */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
-        <h3 className="text-sm font-semibold text-[#223b87] uppercase tracking-wide">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-xs font-semibold text-[#223b87] uppercase tracking-wide mb-3">
           Datos editoriales
         </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              DOI
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={store.doi}
-                onChange={(e) => store.setField("doi", e.target.value)}
-                onBlur={(e) => store.setField("doi", normalizeDoi(e.target.value))}
-                className={`w-full rounded-lg border px-3 py-2.5 pr-9 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
-                  getDoiStatus(store.doi) === "error"
-                    ? "border-red-300 focus:ring-red-500 bg-red-50/30"
-                    : getDoiStatus(store.doi) === "ok"
-                    ? "border-green-300 focus:ring-[#223b87]"
-                    : "border-gray-300 focus:ring-[#223b87]"
-                }`}
-                placeholder="10.1234/abc.2024.001"
-              />
-              {getDoiStatus(store.doi) === "ok" && (
-                <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
-              )}
-              {getDoiStatus(store.doi) === "error" && (
-                <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
-              )}
-            </div>
-            <p className={`text-xs mt-1 ${getDoiStatus(store.doi) === "error" ? "text-red-600" : "text-gray-400"}`}>
-              {getDoiStatus(store.doi) === "error"
-                ? "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
-                : "Opcional. Acepta URL completa o solo el DOI"}
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Referencia de cita
-            </label>
-            <input
-              type="text"
-              value={store.citeRef}
-              onChange={(e) => store.setField("citeRef", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-              placeholder="Estudios Ambientales Revista Latinoamericana, Vol(Num), pp-pp"
-            />
-          </div>
+        <div className="divide-y divide-gray-100">
+          <SummaryItem label="DOI" value={store.doi || null} ok={!!store.doi} />
+          <SummaryItem label="Cita" value={store.citeRef || null} ok={!!store.citeRef} />
+          <SummaryItem label="Fecha publicado" value={store.datePublished || null} ok={!!store.datePublished} />
+          <SummaryItem label="Licencia" value={store.lic} ok={!!store.lic} />
         </div>
+        <p className="text-xs text-gray-400 mt-3">
+          Edita estos campos en el primer paso (Información general).
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha recibido
-            </label>
-            <input
-              type="date"
-              value={store.dateReceived}
-              onChange={(e) => store.setField("dateReceived", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha aceptado
-            </label>
-            <input
-              type="date"
-              value={store.dateAccepted}
-              onChange={(e) => store.setField("dateAccepted", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha publicado
-            </label>
-            <input
-              type="date"
-              value={store.datePublished}
-              onChange={(e) => store.setField("datePublished", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Página de inicio
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={store.pageStart}
-              onChange={(e) =>
-                store.setField("pageStart", parseInt(e.target.value) || 1)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Número de página dentro del volumen de la revista
-            </p>
-          </div>
-        </div>
-
-        {/* License */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Licencia Creative Commons
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {LICENSES.map((lic) => {
-              const isSelected = store.lic === lic.id;
-              return (
-                <button
-                  key={lic.id}
-                  type="button"
-                  onClick={() => store.setField("lic", lic.id)}
-                  className={`text-left p-3 rounded-lg border-2 transition ${
-                    isSelected
-                      ? "border-[#223b87] bg-[#223b87]/5"
-                      : "border-gray-200 hover:border-gray-300 bg-white"
-                  }`}
-                >
-                  <p className={`text-xs font-semibold ${isSelected ? "text-[#223b87]" : "text-gray-700"}`}>
-                    {lic.name}
-                  </p>
-                  <p className="text-xs text-gray-400">{lic.desc}</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+        <FileDown size={28} className="mx-auto text-[#223b87] mb-2" />
+        <p className="text-sm text-gray-700">
+          Si todo está correcto, haz clic en <strong className="text-[#223b87]">"Generar PDF"</strong> abajo para descargar el artículo formateado.
+        </p>
       </div>
     </div>
   );

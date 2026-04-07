@@ -1,10 +1,25 @@
+import { Check, AlertCircle } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
-import { getTitleStatus, LIMITS } from "../../lib/validations";
+import {
+  getTitleStatus,
+  LIMITS,
+  getDoiStatus,
+  normalizeDoi,
+} from "../../lib/validations";
 
 const DOC_TYPES = [
   "Artículo",
   "Revisión Bibliográfica",
   "Artículo de reflexión",
+];
+
+const LICENSES = [
+  { id: "CC BY 4.0", name: "CC BY 4.0", desc: "Atribución" },
+  { id: "CC BY-SA 4.0", name: "CC BY-SA 4.0", desc: "Atribución - CompartirIgual" },
+  { id: "CC BY-ND 4.0", name: "CC BY-ND 4.0", desc: "Atribución - SinDerivadas" },
+  { id: "CC BY-NC 4.0", name: "CC BY-NC 4.0", desc: "Atribución - NoComercial" },
+  { id: "CC BY-NC-SA 4.0", name: "CC BY-NC-SA 4.0", desc: "Atribución - NoComercial - CompartirIgual" },
+  { id: "CC BY-NC-ND 4.0", name: "CC BY-NC-ND 4.0", desc: "Atribución - NoComercial - SinDerivadas" },
 ];
 
 function TitleCounter({ status }) {
@@ -40,8 +55,15 @@ export default function TitlePanel() {
   const enStatus = getTitleStatus(store.titleEn);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
+    <div className="max-w-3xl mx-auto space-y-5">
+      {/* ============================ */}
+      {/*  INFORMACIÓN DEL ARTÍCULO    */}
+      {/* ============================ */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
+        <h3 className="text-xs font-semibold text-[#223b87] uppercase tracking-wide">
+          Información del artículo
+        </h3>
+
         {/* Doc Type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -97,6 +119,145 @@ export default function TitlePanel() {
           <p className="text-xs text-gray-400 mt-1">
             Obligatorio para indexación en SciELO, Redalyc y Latindex
           </p>
+        </div>
+      </div>
+
+      {/* ============================ */}
+      {/*  DATOS EDITORIALES           */}
+      {/* ============================ */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
+        <h3 className="text-xs font-semibold text-[#223b87] uppercase tracking-wide">
+          Datos editoriales
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              DOI
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={store.doi}
+                onChange={(e) => store.setField("doi", e.target.value)}
+                onBlur={(e) => store.setField("doi", normalizeDoi(e.target.value))}
+                className={`w-full rounded-lg border px-3 py-2.5 pr-9 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                  getDoiStatus(store.doi) === "error"
+                    ? "border-red-300 focus:ring-red-500 bg-red-50/30"
+                    : getDoiStatus(store.doi) === "ok"
+                    ? "border-green-300 focus:ring-[#223b87]"
+                    : "border-gray-300 focus:ring-[#223b87]"
+                }`}
+                placeholder="10.1234/abc.2024.001"
+              />
+              {getDoiStatus(store.doi) === "ok" && (
+                <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+              )}
+              {getDoiStatus(store.doi) === "error" && (
+                <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+              )}
+            </div>
+            <p className={`text-xs mt-1 ${getDoiStatus(store.doi) === "error" ? "text-red-600" : "text-gray-400"}`}>
+              {getDoiStatus(store.doi) === "error"
+                ? "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
+                : "Opcional. Acepta URL completa o solo el DOI"}
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Referencia de cita
+            </label>
+            <input
+              type="text"
+              value={store.citeRef}
+              onChange={(e) => store.setField("citeRef", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+              placeholder="Estudios Ambientales Revista Latinoamericana, Vol(Num), pp-pp"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha recibido
+            </label>
+            <input
+              type="date"
+              value={store.dateReceived}
+              onChange={(e) => store.setField("dateReceived", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha aceptado
+            </label>
+            <input
+              type="date"
+              value={store.dateAccepted}
+              onChange={(e) => store.setField("dateAccepted", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha publicado
+            </label>
+            <input
+              type="date"
+              value={store.datePublished}
+              onChange={(e) => store.setField("datePublished", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Página de inicio
+          </label>
+          <input
+            type="number"
+            min={1}
+            value={store.pageStart}
+            onChange={(e) =>
+              store.setField("pageStart", parseInt(e.target.value) || 1)
+            }
+            className="w-32 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Número de página dentro del volumen de la revista
+          </p>
+        </div>
+
+        {/* License */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Licencia Creative Commons
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {LICENSES.map((lic) => {
+              const isSelected = store.lic === lic.id;
+              return (
+                <button
+                  key={lic.id}
+                  type="button"
+                  onClick={() => store.setField("lic", lic.id)}
+                  className={`text-left p-3 rounded-lg border-2 transition ${
+                    isSelected
+                      ? "border-[#223b87] bg-[#223b87]/5"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  <p className={`text-xs font-semibold ${isSelected ? "text-[#223b87]" : "text-gray-700"}`}>
+                    {lic.name}
+                  </p>
+                  <p className="text-xs text-gray-400">{lic.desc}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 
 const STEPS = [
-  { num: 1, label: "Tipo y título" },
+  { num: 1, label: "Información" },
   { num: 2, label: "Autores" },
   { num: 3, label: "Resumen" },
   { num: 4, label: "Contenido" },

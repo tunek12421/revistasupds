@@ -349,6 +349,8 @@ export default function EditorPage() {
         if (errEs) return errEs;
         const errEn = validateTitle(data.titleEn, "Título en inglés");
         if (errEn) return errEn;
+        const doiErr = validateDoi(data.doi);
+        if (doiErr) return `DOI: ${doiErr}`;
         return "";
       }
       case 2: {
@@ -454,15 +456,12 @@ export default function EditorPage() {
       const err = validateStep(s);
       if (err) { setStep(s); setStepError(err); return; }
     }
-    // Step 5 (Review): validate editorial metadata
+    // Body word count and refs count for the chosen docType
     const data = collect();
-    // Body word count for the chosen docType (only enforced when generating PDF)
     const bodyErr = validateBody(useArticleStore.getState().sections, data.docType);
     if (bodyErr) { setStep(4); setStepError(bodyErr); return; }
     const refsErr = validateRefs(data.refs, data.docType);
     if (refsErr) { setStep(4); setStepError(refsErr); return; }
-    const doiErr = validateDoi(data.doi);
-    if (doiErr) { setStep(5); setStepError(`DOI: ${doiErr}`); return; }
     // Open the new tab synchronously (during user click) to bypass popup blockers
     const newTab = window.open("", "_blank");
     if (newTab) {
