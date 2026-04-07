@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import useArticleStore from "../../stores/articleStore";
+import { getAbstractStatus, LIMITS } from "../../lib/validations";
 
 function countKeywords(str) {
   if (!str || !str.trim()) return 0;
@@ -9,11 +10,32 @@ function countKeywords(str) {
     .filter(Boolean).length;
 }
 
+const COUNTER_COLORS = {
+  empty: "text-gray-400",
+  warn: "text-amber-600",
+  ok: "text-green-600",
+  error: "text-red-600",
+};
+
+function abstractTextareaClass(status) {
+  const base =
+    "w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-transparent resize-y";
+  if (status.status === "error")
+    return `${base} border-red-300 focus:ring-red-500 bg-red-50/30`;
+  if (status.status === "warn" && status.words > 0)
+    return `${base} border-amber-300 focus:ring-amber-500`;
+  if (status.status === "ok")
+    return `${base} border-green-300 focus:ring-[#223b87]`;
+  return `${base} border-gray-300 focus:ring-[#223b87]`;
+}
+
 export default function AbstractPanel() {
   const store = useArticleStore();
 
   const kwEsCount = useMemo(() => countKeywords(store.kwEs), [store.kwEs]);
   const kwEnCount = useMemo(() => countKeywords(store.kwEn), [store.kwEn]);
+  const absEsStatus = useMemo(() => getAbstractStatus(store.absEs), [store.absEs]);
+  const absEnStatus = useMemo(() => getAbstractStatus(store.absEn), [store.absEn]);
 
   const kwEsValid = kwEsCount >= 3 && kwEsCount <= 6;
   const kwEnValid = kwEnCount >= 3 && kwEnCount <= 6;
@@ -33,9 +55,13 @@ export default function AbstractPanel() {
             value={store.absEs}
             onChange={(e) => store.setField("absEs", e.target.value)}
             rows={6}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+            className={abstractTextareaClass(absEsStatus)}
             placeholder="Escriba el resumen del artículo en español..."
           />
+          <div className={`text-xs mt-1 ${COUNTER_COLORS[absEsStatus.status]}`}>
+            {absEsStatus.words} palabras ({LIMITS.abstract.minWords}-{LIMITS.abstract.maxWords}) ·{" "}
+            {absEsStatus.chars}/{LIMITS.abstract.maxChars} caracteres
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -75,9 +101,13 @@ export default function AbstractPanel() {
             value={store.absEn}
             onChange={(e) => store.setField("absEn", e.target.value)}
             rows={6}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-y"
+            className={abstractTextareaClass(absEnStatus)}
             placeholder="Write the article abstract in English..."
           />
+          <div className={`text-xs mt-1 ${COUNTER_COLORS[absEnStatus.status]}`}>
+            {absEnStatus.words} words ({LIMITS.abstract.minWords}-{LIMITS.abstract.maxWords}) ·{" "}
+            {absEnStatus.chars}/{LIMITS.abstract.maxChars} characters
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

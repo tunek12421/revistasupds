@@ -14,11 +14,11 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 - [x] Mensaje de error claro indicando rango actual vs requerido
 
 ### Resumen (Abstract)
-- [ ] **Mínimo 150 palabras, máximo 300 palabras** (ES e EN)
-- [ ] **Máximo 2000 caracteres**
-- [ ] Debe ser un único párrafo (sin saltos de línea dobles)
-- [ ] Contador en vivo `(180/300 palabras)` mientras escribe
-- [ ] Color del contador cambia: gris (válido) → amber (cerca del límite) → rojo (fuera de rango)
+- [x] **Mínimo 150 palabras, máximo 300 palabras** (ES e EN)
+- [x] **Máximo 2000 caracteres**
+- [x] Debe ser un único párrafo (sin saltos de línea dobles)
+- [x] Contador en vivo `(180/300 palabras)` mientras escribe
+- [x] Color del contador cambia: gris (válido) → amber (cerca del límite) → rojo (fuera de rango)
 
 ### ORCID
 - [ ] Validación con regex: `^(\d{4}-){3}\d{3}[\dX]$`

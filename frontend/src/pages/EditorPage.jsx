@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle } from "../lib/validations";
+import { validateTitle, validateAbstract } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -357,8 +357,10 @@ export default function EditorPage() {
           return "Todos los autores deben tener nombre";
         return "";
       case 3: {
-        if (!data.absEs.trim()) return "El resumen en español es obligatorio";
-        if (!data.absEn.trim()) return "El abstract en inglés es obligatorio";
+        const errAbsEs = validateAbstract(data.absEs, "Resumen en español");
+        if (errAbsEs) return errAbsEs;
+        const errAbsEn = validateAbstract(data.absEn, "Abstract en inglés");
+        if (errAbsEn) return errAbsEn;
         const kwEsN = countKw(data.kwEs);
         const kwEnN = countKw(data.kwEn);
         if (kwEsN < 3 || kwEsN > 6) return "Palabras clave en español: entre 3 y 6";

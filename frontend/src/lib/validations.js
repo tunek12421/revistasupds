@@ -67,3 +67,43 @@ export function getTitleStatus(title) {
   }
   return { words, chars, status: "warn" };
 }
+
+export function validateAbstract(text, label = "Resumen") {
+  if (!text || !text.trim()) return `${label} es obligatorio`;
+  if (text.length > LIMITS.abstract.maxChars) {
+    return `${label}: máximo ${LIMITS.abstract.maxChars} caracteres (actual: ${text.length})`;
+  }
+  // Detect double line breaks (paragraph breaks)
+  if (/\n\s*\n/.test(text)) {
+    return `${label}: debe ser un único párrafo (sin saltos de párrafo)`;
+  }
+  const words = countWords(text);
+  if (words < LIMITS.abstract.minWords) {
+    return `${label}: mínimo ${LIMITS.abstract.minWords} palabras (actual: ${words})`;
+  }
+  if (words > LIMITS.abstract.maxWords) {
+    return `${label}: máximo ${LIMITS.abstract.maxWords} palabras (actual: ${words})`;
+  }
+  return null;
+}
+
+export function getAbstractStatus(text) {
+  const words = countWords(text);
+  const chars = (text || "").length;
+  if (!text) return { words, chars, status: "empty" };
+  if (
+    words >= LIMITS.abstract.minWords &&
+    words <= LIMITS.abstract.maxWords &&
+    chars <= LIMITS.abstract.maxChars
+  ) {
+    return { words, chars, status: "ok" };
+  }
+  if (
+    words > LIMITS.abstract.maxWords ||
+    chars > LIMITS.abstract.maxChars
+  ) {
+    return { words, chars, status: "error" };
+  }
+  // Below minimum: warn (not error) so user can keep typing
+  return { words, chars, status: "warn" };
+}
