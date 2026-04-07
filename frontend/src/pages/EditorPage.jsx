@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -450,17 +450,18 @@ export default function EditorPage() {
       const err = validateStep(s);
       if (err) { setStep(s); setStepError(err); return; }
     }
+    // Step 5 (Review): validate editorial metadata
+    const data = collect();
+    const doiErr = validateDoi(data.doi);
+    if (doiErr) { setStep(5); setStepError(`DOI: ${doiErr}`); return; }
     setGenerating(true);
     try {
       const res = await api.post("/generate-pdf", collect(), { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "articulo_earl.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      // Open PDF in a new tab so external links don't affect the editor
+      window.open(url, "_blank", "noopener,noreferrer");
+      // Revoke after a delay to allow the new tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch {
       alert("Error al generar el PDF");
     } finally {

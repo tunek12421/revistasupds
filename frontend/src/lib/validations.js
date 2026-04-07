@@ -111,6 +111,28 @@ export function getOrcidStatus(value) {
   return ORCID_URL_REGEX.test(value.trim()) ? "ok" : "error";
 }
 
+// DOI: Crossref recommended pattern. Accepts optional URL prefix.
+const DOI_REGEX = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/;
+const DOI_URL_REGEX = /^(https?:\/\/(dx\.)?doi\.org\/)?10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/;
+
+export function validateDoi(value) {
+  if (!value || !value.trim()) return null; // Optional
+  if (!DOI_URL_REGEX.test(value.trim())) {
+    return "Formato inválido. Ejemplo: 10.1234/abc.2024.001";
+  }
+  return null;
+}
+
+export function normalizeDoi(value) {
+  if (!value) return "";
+  return value.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//, "");
+}
+
+export function getDoiStatus(value) {
+  if (!value || !value.trim()) return "empty";
+  return DOI_URL_REGEX.test(value.trim()) ? "ok" : "error";
+}
+
 export function getAbstractStatus(text) {
   const words = countWords(text);
   const chars = (text || "").length;

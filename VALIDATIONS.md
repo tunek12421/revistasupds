@@ -27,11 +27,11 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 - [x] Validación inline (al perder foco)
 
 ### DOI
-- [ ] Validación con regex Crossref: `^10\.\d{4,9}/[-._;()/:A-Za-z0-9]+$`
-- [ ] Acepta opcionalmente prefijo `https://doi.org/`
-- [ ] Almacenar el DOI bare (sin URL)
-- [ ] Mostrar como link en el PDF: `https://doi.org/{doi}`
-- [ ] Mensaje de error: "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
+- [x] Validación con regex Crossref: `^10\.\d{4,9}/[-._;()/:A-Za-z0-9]+$`
+- [x] Acepta opcionalmente prefijo `https://doi.org/`
+- [x] Almacenar el DOI bare (sin URL)
+- [x] Mostrar como link en el PDF: `https://doi.org/{doi}`
+- [x] Mensaje de error: "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
 
 ### Email
 - [ ] Validación server-side con Pydantic `EmailStr` (ya implementado en auth)

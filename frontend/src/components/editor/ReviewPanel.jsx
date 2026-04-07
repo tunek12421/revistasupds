@@ -1,5 +1,6 @@
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, Check } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
+import { getDoiStatus, normalizeDoi } from "../../lib/validations";
 
 const LICENSES = [
   { id: "CC BY 4.0", name: "CC BY 4.0", desc: "Atribución" },
@@ -104,13 +105,33 @@ export default function ReviewPanel() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               DOI
             </label>
-            <input
-              type="text"
-              value={store.doi}
-              onChange={(e) => store.setField("doi", e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-              placeholder="https://doi.org/10.xxxxx/xxxxx"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={store.doi}
+                onChange={(e) => store.setField("doi", e.target.value)}
+                onBlur={(e) => store.setField("doi", normalizeDoi(e.target.value))}
+                className={`w-full rounded-lg border px-3 py-2.5 pr-9 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                  getDoiStatus(store.doi) === "error"
+                    ? "border-red-300 focus:ring-red-500 bg-red-50/30"
+                    : getDoiStatus(store.doi) === "ok"
+                    ? "border-green-300 focus:ring-[#223b87]"
+                    : "border-gray-300 focus:ring-[#223b87]"
+                }`}
+                placeholder="10.1234/abc.2024.001"
+              />
+              {getDoiStatus(store.doi) === "ok" && (
+                <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+              )}
+              {getDoiStatus(store.doi) === "error" && (
+                <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+              )}
+            </div>
+            <p className={`text-xs mt-1 ${getDoiStatus(store.doi) === "error" ? "text-red-600" : "text-gray-400"}`}>
+              {getDoiStatus(store.doi) === "error"
+                ? "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
+                : "Opcional. Acepta URL completa o solo el DOI"}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

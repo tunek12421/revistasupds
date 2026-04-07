@@ -285,7 +285,11 @@ def build_html(d: dict[str, Any]) -> str:
         if "Latinoamericana" in cite
         else cite
     )
-    fr = f'<a href="{doi}" target="_blank">{_xe(doi)}</a>' if doi else ""
+    if doi:
+        doi_url = doi if doi.startswith("http") else f"https://doi.org/{doi}"
+        fr = f'<a href="{doi_url}">{_xe(doi)}</a>'
+    else:
+        fr = ""
 
     # Authors block
     auth = ""
@@ -422,7 +426,7 @@ def build_html(d: dict[str, Any]) -> str:
                     if re.match(r'https?://\S+', part):
                         url = part.rstrip('.,;)')
                         trailing = part[len(url):]
-                        result += f'<a href="{url}" target="_blank" style="color:#223b87">{_xe(url)}</a>{_xe(trailing)}'
+                        result += f'<a href="{url}" style="color:#223b87">{_xe(url)}</a>{_xe(trailing)}'
                     else:
                         result += _xe(part)
                 return result
