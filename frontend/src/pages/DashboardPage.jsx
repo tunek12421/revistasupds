@@ -7,6 +7,7 @@ import {
   LogOut,
   FileText,
   Loader2,
+  Users,
 } from "lucide-react";
 import useAuthStore from "../stores/authStore";
 import useArticleStore from "../stores/articleStore";
@@ -100,7 +101,21 @@ export default function DashboardPage() {
             {user && (
               <span className="text-sm text-gray-600 hidden sm:inline">
                 {user.full_name}
+                {user.is_admin && (
+                  <span className="ml-2 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                    admin
+                  </span>
+                )}
               </span>
+            )}
+            {user?.is_admin && (
+              <button
+                onClick={() => navigate("/admin/users")}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#223b87] transition"
+              >
+                <Users size={16} />
+                Usuarios
+              </button>
             )}
             <button
               onClick={handleLogout}

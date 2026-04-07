@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import useAuthStore from "../stores/authStore";
 
 export default function LoginPage() {
@@ -84,14 +84,8 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          ¿No tienes una cuenta?{" "}
-          <Link
-            to="/register"
-            className="text-primary-500 hover:text-primary-700 font-medium"
-          >
-            Regístrate
-          </Link>
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Para obtener acceso, contacte al administrador de la revista.
         </p>
       </div>
     </div>

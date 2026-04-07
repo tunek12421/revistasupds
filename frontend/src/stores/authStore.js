@@ -24,23 +24,6 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  register: async (email, password, fullName) => {
-    set({ loading: true, error: null });
-    try {
-      await api.post("/auth/register", {
-        email,
-        password,
-        full_name: fullName,
-      });
-      set({ loading: false });
-    } catch (err) {
-      const message =
-        err.response?.data?.detail || "Error al registrarse";
-      set({ loading: false, error: message });
-      throw err;
-    }
-  },
-
   logout: () => {
     localStorage.removeItem("token");
     set({ user: null, token: null, isAuthenticated: false, error: null });
@@ -54,6 +37,11 @@ const useAuthStore = create((set, get) => ({
       set({ user: null, isAuthenticated: false, token: null });
       localStorage.removeItem("token");
     }
+  },
+
+  isAdmin: () => {
+    const u = get().user;
+    return !!(u && u.is_admin);
   },
 }));
 

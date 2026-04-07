@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
     DEBUG: bool = False
 
+    # Initial admin (auto-created at startup if no users exist)
+    INITIAL_ADMIN_EMAIL: str = "admin@earl.local"
+    INITIAL_ADMIN_PASSWORD: str = "ChangeMe123!"
+    INITIAL_ADMIN_NAME: str = "Administrator"
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
