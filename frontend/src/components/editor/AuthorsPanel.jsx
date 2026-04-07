@@ -1,12 +1,14 @@
 import { Plus, Trash2, GripVertical, Check, AlertCircle } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
-import { getOrcidStatus, normalizeOrcid, getEmailStatus } from "../../lib/validations";
+import { getOrcidStatus, normalizeOrcid, getEmailStatus, LIMITS } from "../../lib/validations";
 
 export default function AuthorsPanel() {
   const authors = useArticleStore((s) => s.authors);
   const addAuthor = useArticleStore((s) => s.addAuthor);
   const removeAuthor = useArticleStore((s) => s.removeAuthor);
   const updateAuthor = useArticleStore((s) => s.updateAuthor);
+
+  const atMax = authors.length >= LIMITS.authors.max;
 
   return (
     <div className="space-y-6">
@@ -16,12 +18,14 @@ export default function AuthorsPanel() {
             Autores
           </h2>
           <p className="text-sm text-gray-500">
-            Añade los autores del artículo
+            Añade los autores del artículo · {authors.length}/{LIMITS.authors.max}
           </p>
         </div>
         <button
           onClick={addAuthor}
-          className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+          disabled={atMax}
+          className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+          title={atMax ? `Máximo ${LIMITS.authors.max} autores` : ""}
         >
           <Plus size={16} />
           Añadir autor

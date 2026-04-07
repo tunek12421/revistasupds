@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords, LIMITS as VLIMITS } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -353,6 +353,8 @@ export default function EditorPage() {
       }
       case 2: {
         if (data.authors.length === 0) return "Añade al menos un autor";
+        if (data.authors.length > VLIMITS.authors.max)
+          return `Máximo ${VLIMITS.authors.max} autores (actual: ${data.authors.length})`;
         if (data.authors.some((a) => !a.name.trim()))
           return "Todos los autores deben tener nombre";
         for (let i = 0; i < data.authors.length; i++) {

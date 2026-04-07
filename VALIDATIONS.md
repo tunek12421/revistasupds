@@ -50,10 +50,10 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 - [x] Validación independiente para ES y EN
 
 ### Autores
-- [ ] **Mínimo 1, máximo 10 autores**
+- [x] **Mínimo 1, máximo 10 autores**
 - [ ] Cada autor debe tener: nombre completo (obligatorio), institución (obligatorio)
-- [ ] Email opcional pero validado si se ingresa
-- [ ] ORCID opcional pero validado si se ingresa
+- [x] Email opcional pero validado si se ingresa
+- [x] ORCID opcional pero validado si se ingresa
 - [ ] Marcar al menos un autor como "corresponsal"
 
 ### Cuerpo del Artículo (según `docType`)
