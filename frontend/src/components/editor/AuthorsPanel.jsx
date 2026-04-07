@@ -1,6 +1,6 @@
 import { Plus, Trash2, GripVertical, Check, AlertCircle } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
-import { getOrcidStatus, normalizeOrcid } from "../../lib/validations";
+import { getOrcidStatus, normalizeOrcid, getEmailStatus } from "../../lib/validations";
 
 export default function AuthorsPanel() {
   const authors = useArticleStore((s) => s.authors);
@@ -95,15 +95,34 @@ export default function AuthorsPanel() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Correo electrónico
                 </label>
-                <input
-                  type="email"
-                  value={author.email}
-                  onChange={(e) =>
-                    updateAuthor(index, "email", e.target.value)
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="autor@ejemplo.com"
-                />
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={author.email}
+                    onChange={(e) =>
+                      updateAuthor(index, "email", e.target.value)
+                    }
+                    className={`w-full rounded-lg border px-3 py-2 pr-9 text-sm focus:outline-none focus:ring-2 focus:border-transparent ${
+                      getEmailStatus(author.email) === "error"
+                        ? "border-red-300 focus:ring-red-500 bg-red-50/30"
+                        : getEmailStatus(author.email) === "ok"
+                        ? "border-green-300 focus:ring-[#223b87]"
+                        : "border-gray-300 focus:ring-primary-500"
+                    }`}
+                    placeholder="autor@ejemplo.com"
+                  />
+                  {getEmailStatus(author.email) === "ok" && (
+                    <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
+                  )}
+                  {getEmailStatus(author.email) === "error" && (
+                    <AlertCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+                  )}
+                </div>
+                {getEmailStatus(author.email) === "error" && (
+                  <p className="text-xs mt-1 text-red-600">
+                    Formato inválido. Ejemplo: autor@universidad.edu
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

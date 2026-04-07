@@ -34,9 +34,9 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 - [x] Mensaje de error: "Formato inválido. Ejemplo: 10.1234/abc.2024.001"
 
 ### Email
-- [ ] Validación server-side con Pydantic `EmailStr` (ya implementado en auth)
-- [ ] Validación inline en el frontend del campo del autor
-- [ ] Mensaje de error claro
+- [x] Validación server-side con Pydantic `EmailStr` (ya implementado en auth)
+- [x] Validación inline en el frontend del campo del autor
+- [x] Mensaje de error claro
 
 ---
 

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid, validateDoi } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -358,6 +358,8 @@ export default function EditorPage() {
         for (let i = 0; i < data.authors.length; i++) {
           const orcidErr = validateOrcid(data.authors[i].orcid);
           if (orcidErr) return `Autor ${i + 1}: ${orcidErr}`;
+          const emailErr = validateEmail(data.authors[i].email);
+          if (emailErr) return `Autor ${i + 1}: ${emailErr}`;
         }
         return "";
       }

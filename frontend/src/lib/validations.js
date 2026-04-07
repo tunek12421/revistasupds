@@ -133,6 +133,22 @@ export function getDoiStatus(value) {
   return DOI_URL_REGEX.test(value.trim()) ? "ok" : "error";
 }
 
+// Email: simplified RFC 5322
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+export function validateEmail(value) {
+  if (!value || !value.trim()) return null; // Optional
+  if (!EMAIL_REGEX.test(value.trim())) {
+    return "Formato inválido. Ejemplo: autor@universidad.edu";
+  }
+  return null;
+}
+
+export function getEmailStatus(value) {
+  if (!value || !value.trim()) return "empty";
+  return EMAIL_REGEX.test(value.trim()) ? "ok" : "error";
+}
+
 export function getAbstractStatus(text) {
   const words = countWords(text);
   const chars = (text || "").length;
