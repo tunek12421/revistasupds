@@ -143,10 +143,9 @@ export default function BodyPanel() {
                               placeholder="Título de subsección"
                             />
                             <div className="mt-1">
-                              <SectionEditor 
-                                blocks={subBlocks} 
+                              <SectionEditor
+                                blocks={subBlocks}
                                 onChange={(newBlocks) => updateSubsection(sIdx, subIdx, "blocks", newBlocks)}
-                                hideFootnotes={true}
                               />
                             </div>
                           </div>

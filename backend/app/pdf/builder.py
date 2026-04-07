@@ -211,7 +211,10 @@ def _process_block(
     if not text:
         return ""
 
-    sec_fn_idx = [0]
+    # sec_fn_idx is shared via fn_global so it persists across section + subsections
+    if "sec_fn_idx" not in fn_global:
+        fn_global["sec_fn_idx"] = [0]
+    sec_fn_idx = fn_global["sec_fn_idx"]
     html = ""
 
     for para in text.split("\n"):
@@ -407,12 +410,19 @@ def build_html(d: dict[str, Any]) -> str:
             f'<div class="sec-title"><span class="sec-num">{i + 1}.</span> '
             f"{_xe(sec.get('title', '')).upper()}</div>"
         )
+        # Reset the fn index counter for each section so it starts at 0
+        # within sec.fns (which contains both section + subsection footnotes
+        # in the order they appear in the document)
+        fn_global["sec_fn_idx"] = [0]
+        sec_fns = sec.get("fns", [])
         body += _process_block(
-            sec.get("content", ""), sec.get("fns", []), fn_global, all_fns
+            sec.get("content", ""), sec_fns, fn_global, all_fns
         )
         for j, sub in enumerate(sec.get("subs", [])):
             body += f'<div class="sub-title">{i + 1}.{j + 1}. {_xe(sub.get("title", ""))}</div>'
-            body += _process_block(sub.get("content", ""), [], fn_global, all_fns)
+            # Use the same sec_fns list — sec_fn_idx persists, so the
+            # subsection continues consuming from where the section left off
+            body += _process_block(sub.get("content", ""), sec_fns, fn_global, all_fns)
 
     # References (on a new page)
     if d.get("refs"):
