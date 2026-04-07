@@ -50,8 +50,8 @@ if [[ -n "${SSHPASS:-}" ]]; then
         echo "ERROR: SSHPASS está definido pero sshpass no está instalado" >&2
         exit 1
     fi
-    SSH_CMD=(sshpass -e ssh -o ConnectTimeout=30)
-    SCP_CMD=(sshpass -e scp -o ConnectTimeout=30)
+    SSH_CMD=(sshpass -e ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no)
+    SCP_CMD=(sshpass -e scp -o ConnectTimeout=30 -o StrictHostKeyChecking=no)
 else
     SSH_CMD=(ssh -o ConnectTimeout=30)
     SCP_CMD=(scp -o ConnectTimeout=30)

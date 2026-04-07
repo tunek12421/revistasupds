@@ -2,7 +2,7 @@
 // See VALIDATIONS.md for the full reference.
 
 export const LIMITS = {
-  title: { minWords: 5, maxWords: 20, maxChars: 200 },
+  title: { minWords: 5, maxWords: 40, maxChars: 200 },
   abstract: { minWords: 150, maxWords: 300, maxChars: 2000 },
   keyword: { maxChars: 50, maxWords: 4 },
   keywords: { min: 3, max: 6 },
