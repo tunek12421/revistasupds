@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
+import { validateTitle } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -343,10 +344,13 @@ export default function EditorPage() {
   const validateStep = (s) => {
     const data = collect();
     switch (s) {
-      case 1:
-        if (!data.titleEs.trim()) return "El título en español es obligatorio";
-        if (!data.titleEn.trim()) return "El título en inglés es obligatorio";
+      case 1: {
+        const errEs = validateTitle(data.titleEs, "Título en español");
+        if (errEs) return errEs;
+        const errEn = validateTitle(data.titleEn, "Título en inglés");
+        if (errEn) return errEn;
         return "";
+      }
       case 2:
         if (data.authors.length === 0) return "Añade al menos un autor";
         if (data.authors.some((a) => !a.name.trim()))

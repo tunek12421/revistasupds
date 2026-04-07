@@ -1,4 +1,5 @@
 import useArticleStore from "../../stores/articleStore";
+import { getTitleStatus, LIMITS } from "../../lib/validations";
 
 const DOC_TYPES = [
   "Artículo",
@@ -6,8 +7,37 @@ const DOC_TYPES = [
   "Artículo de reflexión",
 ];
 
+function TitleCounter({ status }) {
+  const colors = {
+    empty: "text-gray-400",
+    ok: "text-green-600",
+    warn: "text-amber-600",
+    error: "text-red-600",
+  };
+  return (
+    <div className={`text-xs mt-1 ${colors[status.status]}`}>
+      {status.words} palabras ({LIMITS.title.minWords}-{LIMITS.title.maxWords}) ·{" "}
+      {status.chars}/{LIMITS.title.maxChars} caracteres
+    </div>
+  );
+}
+
+function inputClass(status) {
+  const base =
+    "w-full rounded-lg border px-4 py-3 text-base focus:outline-none focus:ring-2 focus:border-transparent";
+  if (status.status === "error")
+    return `${base} border-red-300 focus:ring-red-500 bg-red-50/30`;
+  if (status.status === "warn")
+    return `${base} border-amber-300 focus:ring-amber-500`;
+  if (status.status === "ok")
+    return `${base} border-green-300 focus:ring-[#223b87]`;
+  return `${base} border-gray-300 focus:ring-[#223b87]`;
+}
+
 export default function TitlePanel() {
   const store = useArticleStore();
+  const esStatus = getTitleStatus(store.titleEs);
+  const enStatus = getTitleStatus(store.titleEn);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -44,10 +74,11 @@ export default function TitlePanel() {
             type="text"
             value={store.titleEs}
             onChange={(e) => store.setField("titleEs", e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            className={inputClass(esStatus)}
             placeholder="Ingrese el título del artículo en español"
             autoFocus
           />
+          <TitleCounter status={esStatus} />
         </div>
 
         {/* Title EN */}
@@ -59,9 +90,10 @@ export default function TitlePanel() {
             type="text"
             value={store.titleEn}
             onChange={(e) => store.setField("titleEn", e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            className={inputClass(enStatus)}
             placeholder="Enter the article title in English"
           />
+          <TitleCounter status={enStatus} />
           <p className="text-xs text-gray-400 mt-1">
             Obligatorio para indexación en SciELO, Redalyc y Latindex
           </p>
