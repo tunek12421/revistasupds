@@ -21,10 +21,10 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 - [x] Color del contador cambia: gris (válido) → amber (cerca del límite) → rojo (fuera de rango)
 
 ### ORCID
-- [ ] Validación con regex: `^(\d{4}-){3}\d{3}[\dX]$`
-- [ ] Acepta opcionalmente prefijo URL: `^(https?://orcid\.org/)?(\d{4}-){3}\d{3}[\dX]$`
-- [ ] Mensaje de error: "Formato inválido. Ejemplo: 0000-0002-1825-0097"
-- [ ] Validación inline (al perder foco)
+- [x] Validación con regex: `^(\d{4}-){3}\d{3}[\dX]$`
+- [x] Acepta opcionalmente prefijo URL: `^(https?://orcid\.org/)?(\d{4}-){3}\d{3}[\dX]$`
+- [x] Mensaje de error: "Formato inválido. Ejemplo: 0000-0002-1825-0097"
+- [x] Validación inline (al perder foco)
 
 ### DOI
 - [ ] Validación con regex Crossref: `^10\.\d{4,9}/[-._;()/:A-Za-z0-9]+$`

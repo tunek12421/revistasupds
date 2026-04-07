@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -351,11 +351,16 @@ export default function EditorPage() {
         if (errEn) return errEn;
         return "";
       }
-      case 2:
+      case 2: {
         if (data.authors.length === 0) return "Añade al menos un autor";
         if (data.authors.some((a) => !a.name.trim()))
           return "Todos los autores deben tener nombre";
+        for (let i = 0; i < data.authors.length; i++) {
+          const orcidErr = validateOrcid(data.authors[i].orcid);
+          if (orcidErr) return `Autor ${i + 1}: ${orcidErr}`;
+        }
         return "";
+      }
       case 3: {
         const errAbsEs = validateAbstract(data.absEs, "Resumen en español");
         if (errAbsEs) return errAbsEs;

@@ -87,6 +87,30 @@ export function validateAbstract(text, label = "Resumen") {
   return null;
 }
 
+// ORCID: 16 digits in 4-4-4-4 format, last char can be X (checksum)
+const ORCID_REGEX = /^(\d{4}-){3}\d{3}[\dX]$/;
+const ORCID_URL_REGEX = /^(https?:\/\/orcid\.org\/)?(\d{4}-){3}\d{3}[\dX]$/;
+
+export function validateOrcid(value) {
+  if (!value || !value.trim()) return null; // Optional
+  const trimmed = value.trim();
+  if (!ORCID_URL_REGEX.test(trimmed)) {
+    return "Formato inválido. Ejemplo: 0000-0002-1825-0097";
+  }
+  return null;
+}
+
+export function normalizeOrcid(value) {
+  if (!value) return "";
+  // Strip URL prefix if present
+  return value.trim().replace(/^https?:\/\/orcid\.org\//, "");
+}
+
+export function getOrcidStatus(value) {
+  if (!value || !value.trim()) return "empty";
+  return ORCID_URL_REGEX.test(value.trim()) ? "ok" : "error";
+}
+
 export function getAbstractStatus(text) {
   const words = countWords(text);
   const chars = (text || "").length;
