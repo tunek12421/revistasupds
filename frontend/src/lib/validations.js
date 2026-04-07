@@ -197,6 +197,34 @@ export function getBodyStatus(sections, docType) {
   return { words, limits, status: "warn" };
 }
 
+export function validateRefs(refs, docType) {
+  const limits = LIMITS.refs[docType] || LIMITS.refs["Artículo"];
+  const valid = (refs || []).filter((r) => r && r.trim());
+  if (valid.length < limits.min) {
+    return `Referencias: mínimo ${limits.min} para "${docType}" (actual: ${valid.length})`;
+  }
+  if (valid.length > limits.max) {
+    return `Referencias: máximo ${limits.max} para "${docType}" (actual: ${valid.length})`;
+  }
+  for (const ref of valid) {
+    if (ref.trim().length < 30) {
+      return `Referencia muy corta (mín 30 caracteres): "${ref.slice(0, 40)}..."`;
+    }
+  }
+  return null;
+}
+
+export function getRefsStatus(refs, docType) {
+  const limits = LIMITS.refs[docType] || LIMITS.refs["Artículo"];
+  const count = (refs || []).filter((r) => r && r.trim()).length;
+  if (count === 0) return { count, limits, status: "empty" };
+  if (count >= limits.min && count <= limits.max) {
+    return { count, limits, status: "ok" };
+  }
+  if (count > limits.max) return { count, limits, status: "error" };
+  return { count, limits, status: "warn" };
+}
+
 export function parseKeywords(str) {
   if (!str || !str.trim()) return [];
   return str.split(",").map((k) => k.trim()).filter(Boolean);

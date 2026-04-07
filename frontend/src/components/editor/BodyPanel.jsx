@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../../stores/articleStore";
 import SectionEditor from "./SectionEditor";
-import { getBodyStatus } from "../../lib/validations";
+import { getBodyStatus, getRefsStatus } from "../../lib/validations";
 
 const COUNTER_COLORS = {
   empty: "text-gray-400",
@@ -23,6 +23,7 @@ export default function BodyPanel() {
   const refs = useArticleStore((s) => s.refs);
   const docType = useArticleStore((s) => s.docType);
   const bodyStatus = useMemo(() => getBodyStatus(sections, docType), [sections, docType]);
+  const refsStatus = useMemo(() => getRefsStatus(refs, docType), [refs, docType]);
   const addSection = useArticleStore((s) => s.addSection);
   const removeSection = useArticleStore((s) => s.removeSection);
   const addSubsection = useArticleStore((s) => s.addSubsection);
@@ -178,11 +179,9 @@ export default function BodyPanel() {
               {showRefs ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               <BookOpen size={14} />
               Referencias bibliográficas
-              {refs.filter(Boolean).length > 0 && (
-                <span className="text-xs text-gray-400 font-normal">
-                  ({refs.filter(Boolean).length})
-                </span>
-              )}
+              <span className={`text-xs font-normal ${COUNTER_COLORS[refsStatus.status]}`}>
+                {refsStatus.count}/{refsStatus.limits.min}-{refsStatus.limits.max}
+              </span>
             </button>
             <button
               onClick={addRef}

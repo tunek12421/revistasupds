@@ -76,10 +76,10 @@ Validaciones basadas en estándares de **SciELO**, **Latindex**, **Redalyc** y *
 | Revisión Bibliográfica | 50 | 150 |
 | Artículo de reflexión | 10 | 40 |
 
-- [ ] Validación de cantidad según `docType`
-- [ ] Cada referencia debe tener mínimo 30 caracteres
+- [x] Validación de cantidad según `docType`
+- [x] Cada referencia debe tener mínimo 30 caracteres
 - [ ] Cada referencia debe contener un año entre paréntesis `(YYYY)` (advertencia)
-- [ ] Mensaje de error en el panel de referencias
+- [x] Mensaje de error en el panel de referencias
 
 ### Figuras y Tablas
 - [ ] Máximo 10 figuras/cuadros/gráficos combinados

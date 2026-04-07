@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
-import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords, validateBody, LIMITS as VLIMITS } from "../lib/validations";
+import { validateTitle, validateAbstract, validateOrcid, validateDoi, validateEmail, validateKeywords, validateBody, validateRefs, LIMITS as VLIMITS } from "../lib/validations";
 import StepIndicator from "../components/editor/StepIndicator";
 import TitlePanel from "../components/editor/TitlePanel";
 import AuthorsPanel from "../components/editor/AuthorsPanel";
@@ -459,17 +459,35 @@ export default function EditorPage() {
     // Body word count for the chosen docType (only enforced when generating PDF)
     const bodyErr = validateBody(useArticleStore.getState().sections, data.docType);
     if (bodyErr) { setStep(4); setStepError(bodyErr); return; }
+    const refsErr = validateRefs(data.refs, data.docType);
+    if (refsErr) { setStep(4); setStepError(refsErr); return; }
     const doiErr = validateDoi(data.doi);
     if (doiErr) { setStep(5); setStepError(`DOI: ${doiErr}`); return; }
+    // Open the new tab synchronously (during user click) to bypass popup blockers
+    const newTab = window.open("", "_blank");
+    if (newTab) {
+      newTab.document.write(
+        '<html><head><title>Generando PDF...</title></head><body style="font-family:Arial;text-align:center;padding-top:40vh;color:#666"><h2>Generando PDF...</h2></body></html>'
+      );
+    }
     setGenerating(true);
     try {
       const res = await api.post("/generate-pdf", collect(), { responseType: "blob" });
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      // Open PDF in a new tab so external links don't affect the editor
-      window.open(url, "_blank", "noopener,noreferrer");
-      // Revoke after a delay to allow the new tab to load
+      if (newTab) {
+        newTab.location.href = url;
+      } else {
+        // Fallback if popup was blocked: download
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "articulo_earl.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch {
+      if (newTab) newTab.close();
       alert("Error al generar el PDF");
     } finally {
       setGenerating(false);
