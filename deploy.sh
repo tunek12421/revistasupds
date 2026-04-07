@@ -14,6 +14,7 @@
 #   VPS_HOST          IP o dominio del VPS
 #   VPS_USER          Usuario SSH
 #   VPS_PROJECT_DIR   Directorio del proyecto en el VPS
+#   IMAGE_PREFIX      Prefix de las imágenes (ej: ghcr.io/tu_usuario)
 #
 # Variables OPCIONALES:
 #   SSHPASS           Password SSH (si no usas llave). Requiere `sshpass`.
@@ -28,6 +29,8 @@ set -euo pipefail
 : "${VPS_PROJECT_DIR:?ERROR: Define VPS_PROJECT_DIR. Crea .deploy.env basado en .deploy.env.example}"
 
 COMPOSE_FILE="${COMPOSE_FILE:-compose.production.yaml}"
+# Image prefix must match the image name in compose.production.yaml on the VPS
+: "${IMAGE_PREFIX:?ERROR: Define IMAGE_PREFIX. Ej: IMAGE_PREFIX=ghcr.io/tu_usuario}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -56,7 +59,7 @@ fi
 
 deploy_service() {
     local service="$1"
-    local image="earl-${service}:latest"
+    local image="${IMAGE_PREFIX}/earl-${service}:latest"
     local tarfile="/tmp/earl-${service}.tar.gz"
 
     echo ""
