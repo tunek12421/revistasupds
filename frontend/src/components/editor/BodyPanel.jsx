@@ -29,6 +29,9 @@ export default function BodyPanel() {
   const addSubsection = useArticleStore((s) => s.addSubsection);
   const removeSubsection = useArticleStore((s) => s.removeSubsection);
   const updateSubsection = useArticleStore((s) => s.updateSubsection);
+  const addSubsubsection = useArticleStore((s) => s.addSubsubsection);
+  const removeSubsubsection = useArticleStore((s) => s.removeSubsubsection);
+  const updateSubsubsection = useArticleStore((s) => s.updateSubsubsection);
   const updateSection = useArticleStore((s) => s.updateSection);
   const addRef = useArticleStore((s) => s.addRef);
   const removeRef = useArticleStore((s) => s.removeRef);
@@ -148,6 +151,70 @@ export default function BodyPanel() {
                                 onChange={(newBlocks) => updateSubsection(sIdx, subIdx, "blocks", newBlocks)}
                               />
                             </div>
+
+                            {/* Sub-subsections (level 3) */}
+                            {sub.subs && sub.subs.length > 0 && (
+                              <div className="ml-2 border-l-2 border-[#223b87]/15 pl-2 space-y-2 pt-1">
+                                {sub.subs.map((subsub, subsubIdx) => {
+                                  const subsubBlocks =
+                                    subsub.blocks || [{ type: "text", content: subsub.content || "" }];
+                                  return (
+                                    <div
+                                      key={subsubIdx}
+                                      className="bg-white border border-gray-200 rounded-md p-2 space-y-2"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-semibold italic text-[#3a4f8a]">
+                                          {sIdx + 1}.{subIdx + 1}.{subsubIdx + 1}
+                                        </span>
+                                        <button
+                                          onClick={() =>
+                                            removeSubsubsection(sIdx, subIdx, subsubIdx)
+                                          }
+                                          className="p-1 text-gray-400 hover:text-red-500 transition"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                      <input
+                                        type="text"
+                                        value={subsub.title}
+                                        onChange={(e) =>
+                                          updateSubsubsection(
+                                            sIdx,
+                                            subIdx,
+                                            subsubIdx,
+                                            "title",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#223b87]"
+                                        placeholder="Título de sub-subsección"
+                                      />
+                                      <SectionEditor
+                                        blocks={subsubBlocks}
+                                        onChange={(newBlocks) =>
+                                          updateSubsubsection(
+                                            sIdx,
+                                            subIdx,
+                                            subsubIdx,
+                                            "blocks",
+                                            newBlocks
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => addSubsubsection(sIdx, subIdx)}
+                              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-[#223b87] font-medium transition"
+                            >
+                              <ListPlus size={11} /> Añadir sub-subsección
+                            </button>
                           </div>
                         );
                       })}

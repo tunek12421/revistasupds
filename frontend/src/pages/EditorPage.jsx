@@ -19,6 +19,7 @@ import AuthorsPanel from "../components/editor/AuthorsPanel";
 import AbstractPanel from "../components/editor/AbstractPanel";
 import BodyPanel from "../components/editor/BodyPanel";
 import ReviewPanel from "../components/editor/ReviewPanel";
+import WarningModal from "../components/common/WarningModal";
 
 const TOTAL_STEPS = 5;
 
@@ -312,7 +313,7 @@ export default function EditorPage() {
   const [showPreview, setShowPreview] = useState(true);
   const [articleId, setArticleId] = useState(id || null);
   const [loadingArticle, setLoadingArticle] = useState(false);
-  const [stepError, setStepError] = useState("");
+  const [warningModal, setWarningModal] = useState(null);
   const [saveMessage, setSaveMessage] = useState("");
   const contentRef = useRef(null);
 
@@ -340,52 +341,56 @@ export default function EditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Validate current step
+  // Validate current step — returns an array of warnings (empty = ok)
   const validateStep = (s) => {
     const data = collect();
+    const warnings = [];
+    const push = (msg) => { if (msg) warnings.push(msg); };
+
     switch (s) {
       case 1: {
-        const errEs = validateTitle(data.titleEs, "Título en español");
-        if (errEs) return errEs;
-        const errEn = validateTitle(data.titleEn, "Título en inglés");
-        if (errEn) return errEn;
+        push(validateTitle(data.titleEs, "Título en español"));
+        push(validateTitle(data.titleEn, "Título en inglés"));
         const doiErr = validateDoi(data.doi);
-        if (doiErr) return `DOI: ${doiErr}`;
-        return "";
+        if (doiErr) push(`DOI: ${doiErr}`);
+        break;
       }
       case 2: {
-        if (data.authors.length === 0) return "Añade al menos un autor";
-        if (data.authors.length > VLIMITS.authors.max)
-          return `Máximo ${VLIMITS.authors.max} autores (actual: ${data.authors.length})`;
-        if (data.authors.some((a) => !a.name.trim()))
-          return "Todos los autores deben tener nombre";
-        for (let i = 0; i < data.authors.length; i++) {
-          const orcidErr = validateOrcid(data.authors[i].orcid);
-          if (orcidErr) return `Autor ${i + 1}: ${orcidErr}`;
-          const emailErr = validateEmail(data.authors[i].email);
-          if (emailErr) return `Autor ${i + 1}: ${emailErr}`;
+        if (data.authors.length === 0) {
+          push("Añade al menos un autor");
+        } else {
+          if (data.authors.length > VLIMITS.authors.max)
+            push(`Máximo ${VLIMITS.authors.max} autores (actual: ${data.authors.length})`);
+          if (data.authors.some((a) => !a.name.trim()))
+            push("Todos los autores deben tener nombre");
+          for (let i = 0; i < data.authors.length; i++) {
+            const orcidErr = validateOrcid(data.authors[i].orcid);
+            if (orcidErr) push(`Autor ${i + 1}: ${orcidErr}`);
+            const emailErr = validateEmail(data.authors[i].email);
+            if (emailErr) push(`Autor ${i + 1}: ${emailErr}`);
+          }
         }
-        return "";
+        break;
       }
       case 3: {
-        const errAbsEs = validateAbstract(data.absEs, "Resumen en español");
-        if (errAbsEs) return errAbsEs;
-        const errAbsEn = validateAbstract(data.absEn, "Abstract en inglés");
-        if (errAbsEn) return errAbsEn;
-        const errKwEs = validateKeywords(data.kwEs, "Palabras clave en español");
-        if (errKwEs) return errKwEs;
-        const errKwEn = validateKeywords(data.kwEn, "Keywords en inglés");
-        if (errKwEn) return errKwEn;
-        return "";
+        push(validateAbstract(data.absEs, "Resumen en español"));
+        push(validateAbstract(data.absEn, "Abstract en inglés"));
+        push(validateKeywords(data.kwEs, "Palabras clave en español"));
+        push(validateKeywords(data.kwEn, "Keywords en inglés"));
+        break;
       }
-      case 4:
-        if (data.sections.length === 0) return "Añade al menos una sección";
-        if (data.sections.some((sec) => !sec.title.trim()))
-          return "Todas las secciones deben tener título";
-        return "";
+      case 4: {
+        if (data.sections.length === 0) {
+          push("Añade al menos una sección");
+        } else if (data.sections.some((sec) => !sec.title.trim())) {
+          push("Todas las secciones deben tener título");
+        }
+        break;
+      }
       default:
-        return "";
+        break;
     }
+    return warnings;
   };
 
   // Auto-save
@@ -411,17 +416,31 @@ export default function EditorPage() {
     }
   };
 
-  const handleNext = async () => {
-    const error = validateStep(step);
-    if (error) { setStepError(error); return; }
-    setStepError("");
+  const goToNextStep = async () => {
     await autoSave();
     setStep((s) => Math.min(s + 1, TOTAL_STEPS));
     contentRef.current?.scrollTo(0, 0);
   };
 
+  const handleNext = async () => {
+    const warnings = validateStep(step);
+    if (warnings.length > 0) {
+      setWarningModal({
+        title: "Antes de continuar",
+        messages: warnings,
+        continueLabel: "Continuar de todas formas",
+        onContinue: async () => {
+          setWarningModal(null);
+          await goToNextStep();
+        },
+        onCancel: () => setWarningModal(null),
+      });
+      return;
+    }
+    await goToNextStep();
+  };
+
   const handleBack = () => {
-    setStepError("");
     setStep((s) => Math.max(s - 1, 1));
     contentRef.current?.scrollTo(0, 0);
   };
@@ -451,18 +470,9 @@ export default function EditorPage() {
     }
   };
 
-  const handleGeneratePdf = async () => {
-    for (let s = 1; s <= 4; s++) {
-      const err = validateStep(s);
-      if (err) { setStep(s); setStepError(err); return; }
-    }
-    // Body word count and refs count for the chosen docType
-    const data = collect();
-    const bodyErr = validateBody(useArticleStore.getState().sections, data.docType);
-    if (bodyErr) { setStep(4); setStepError(bodyErr); return; }
-    const refsErr = validateRefs(data.refs, data.docType);
-    if (refsErr) { setStep(4); setStepError(refsErr); return; }
-    // Open the new tab synchronously (during user click) to bypass popup blockers
+  const actuallyGeneratePdf = async () => {
+    // Open the new tab synchronously is not possible here because we lost
+    // the user gesture; rely on download fallback if popup is blocked.
     const newTab = window.open("", "_blank");
     if (newTab) {
       newTab.document.write(
@@ -476,7 +486,6 @@ export default function EditorPage() {
       if (newTab) {
         newTab.location.href = url;
       } else {
-        // Fallback if popup was blocked: download
         const a = document.createElement("a");
         a.href = url;
         a.download = "articulo_earl.pdf";
@@ -491,6 +500,36 @@ export default function EditorPage() {
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleGeneratePdf = async () => {
+    // Collect all warnings across all steps
+    const allWarnings = [];
+    for (let s = 1; s <= 4; s++) {
+      const stepWarnings = validateStep(s);
+      allWarnings.push(...stepWarnings);
+    }
+    // Body word count and refs count for the chosen docType
+    const data = collect();
+    const bodyErr = validateBody(useArticleStore.getState().sections, data.docType);
+    if (bodyErr) allWarnings.push(bodyErr);
+    const refsErr = validateRefs(data.refs, data.docType);
+    if (refsErr) allWarnings.push(refsErr);
+
+    if (allWarnings.length > 0) {
+      setWarningModal({
+        title: "Antes de generar el PDF",
+        messages: allWarnings,
+        continueLabel: "Generar de todas formas",
+        onContinue: async () => {
+          setWarningModal(null);
+          await actuallyGeneratePdf();
+        },
+        onCancel: () => setWarningModal(null),
+      });
+      return;
+    }
+    await actuallyGeneratePdf();
   };
 
   // Live preview — calls backend for exact same HTML as the PDF
@@ -599,12 +638,15 @@ export default function EditorPage() {
         )}
       </div>
 
-      {/* Step error */}
-      {stepError && (
-        <div className="bg-red-50 border-t border-red-200 px-4 py-2 text-center">
-          <p className="text-sm text-red-600">{stepError}</p>
-        </div>
-      )}
+      {/* Warning modal — replaces blocking errors */}
+      <WarningModal
+        open={!!warningModal}
+        title={warningModal?.title}
+        messages={warningModal?.messages}
+        continueLabel={warningModal?.continueLabel}
+        onContinue={warningModal?.onContinue}
+        onCancel={warningModal?.onCancel}
+      />
 
       {/* Bottom navigation */}
       <footer className="bg-white border-t border-gray-200 flex-shrink-0">

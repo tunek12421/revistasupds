@@ -19,9 +19,47 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.tiptap p {
+.tiptap p,
+.tiptap-content p {
   margin-bottom: 0.75rem;
 }
-.tiptap p:last-child {
+.tiptap p:last-child,
+.tiptap-content p:last-child {
   margin-bottom: 0;
 }
+.tiptap-content strong { font-weight: 700; }
+.tiptap-content em { font-style: italic; }
+.tiptap-content u { text-decoration: underline; }
+.tiptap-content s { text-decoration: line-through; }
+.tiptap-content sub { vertical-align: sub; font-size: 0.75em; }
+.tiptap-content sup { vertical-align: super; font-size: 0.75em; }
+.tiptap-content ul {
+  list-style: disc;
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.tiptap-content ol {
+  list-style: decimal;
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.tiptap-content li > p { margin-bottom: 0.25rem; }
+.tiptap-content blockquote {
+  border-left: 3px solid #d0d8f0;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: #4a5568;
+}
+.tiptap-content a {
+  color: #223b87;
+  text-decoration: underline;
+}
+.tiptap-content h1, .tiptap-content h2, .tiptap-content h3 {
+  font-weight: 700;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.tiptap-content h1 { font-size: 1.25rem; }
+.tiptap-content h2 { font-size: 1.125rem; }
+.tiptap-content h3 { font-size: 1rem; }

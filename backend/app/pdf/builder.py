@@ -87,16 +87,30 @@ CSS = (
     ".sec-title{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;color:#111;text-transform:uppercase;letter-spacing:.03em;margin-top:16px;margin-bottom:7px}"
     ".sec-num{color:#223b87;margin-right:2px}"
     ".sub-title{font-family:Arial,sans-serif;font-size:10.5pt;font-weight:700;color:#223b87;margin-top:12px;margin-bottom:5px}"
+    ".subsub-title{font-family:Arial,sans-serif;font-size:10pt;font-weight:600;font-style:italic;color:#3a4f8a;margin-top:10px;margin-bottom:4px}"
     ".body-p{font-size:10pt;text-align:justify;line-height:1.6;margin-bottom:8px;color:#111}"
+    ".body-wrap p{font-size:10pt;text-align:justify;line-height:1.6;margin-bottom:8px;color:#111}"
+    ".body-wrap strong{font-weight:700}"
+    ".body-wrap em{font-style:italic}"
+    ".body-wrap u{text-decoration:underline}"
+    ".body-wrap s{text-decoration:line-through}"
+    ".body-wrap sub{font-size:7pt;vertical-align:sub}"
+    ".body-wrap sup{font-size:7pt;vertical-align:super}"
+    ".body-wrap ul{list-style:disc;margin:0 0 8px 24px;padding:0;font-size:10pt;line-height:1.6;color:#111}"
+    ".body-wrap ol{list-style:decimal;margin:0 0 8px 24px;padding:0;font-size:10pt;line-height:1.6;color:#111}"
+    ".body-wrap li{margin-bottom:3px}"
+    ".body-wrap li > p{margin-bottom:2px}"
+    ".body-wrap blockquote{border-left:3px solid #c8cfe8;padding-left:12px;margin:8px 0 8px 12px;font-style:italic;color:#444}"
+    ".body-wrap a{color:#223b87;text-decoration:underline}"
     ".fig-wrap{margin:16px 0;text-align:center;page-break-inside:avoid}"
     ".fig-title{font-family:Arial,sans-serif;font-size:9pt;color:#111;margin-top:6px;text-align:left}"
     ".fig-cap{font-family:Arial,sans-serif;font-size:8pt;color:#555;font-style:italic;margin-top:3px;text-align:left}"
     ".fn-area{margin-left:154px;margin-top:20px;page-break-inside:avoid;border-top:1px solid #bbb;padding-top:5px}"
     ".fn-item{font-size:7.5pt;font-family:Arial,sans-serif;color:#444;line-height:1.4;margin-bottom:3px;text-align:justify}"
     "sup{font-size:6pt;vertical-align:super}"
-    ".refs-wrap{margin-left:154px;margin-top:0;padding-top:11px;border-top:1.5px solid #223b87;page-break-before:always}"
+    ".refs-wrap{margin-left:0;margin-top:0;padding-top:11px;border-top:1.5px solid #223b87;page-break-before:always}"
     ".refs-title{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;text-transform:uppercase;color:#111;margin-bottom:8px}"
-    ".ref-item{font-size:8.5pt;margin-bottom:5px;text-align:justify;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222;overflow-wrap:break-word}"
+    ".ref-item{font-size:8.5pt;margin-bottom:5px;text-align:left;line-height:1.45;padding-left:1.5em;text-indent:-1.5em;color:#222;overflow-wrap:break-word}"
     "@media print {"
     " .page { page: main-page; }"
     " .page-inner { page: b-page; display:block!important; height:auto!important; overflow:visible!important; padding:0!important; width:auto!important; box-decoration-break:clone; -webkit-box-decoration-break:clone; margin: 0!important; }"
@@ -208,6 +222,12 @@ def _process_block(
     fn_global: dict[str, Any],
     all_fns: list[str],
 ) -> str:
+    """Process a content block.
+
+    The block content is now HTML produced by the Tiptap editor (with marks
+    like <strong>, <em>, <ul>, <blockquote>, etc.). Legacy plain-text input
+    is also supported by wrapping non-empty lines in <p> tags.
+    """
     if not text:
         return ""
 
@@ -215,56 +235,48 @@ def _process_block(
     if "sec_fn_idx" not in fn_global:
         fn_global["sec_fn_idx"] = [0]
     sec_fn_idx = fn_global["sec_fn_idx"]
-    html = ""
 
-    for para in text.split("\n"):
-        para = para.strip()
-        if not para:
-            continue
+    # Detect HTML vs legacy plain text
+    is_html = bool(re.search(r"<\w+[^>]*>", text))
+    if not is_html:
+        lines = [_xe(line.strip()) for line in text.split("\n") if line.strip()]
+        text = "".join(f"<p>{line}</p>" for line in lines)
 
-        # Check for figure / table / chart markers
-        m = re.match(
-            r"^\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]$", para, re.I
+    # Replace figure marker paragraphs (e.g. <p>[FIGURA 1]</p>) with figure HTML
+    def replace_figure_marker(match: re.Match[str]) -> str:
+        tipo = match.group(1).capitalize()
+        num = match.group(2)
+        key = f"[{match.group(1).upper()} {num}]"
+        fig = fn_global["figmap"].get(key)
+        if fig:
+            return _fig_html(fig)
+        return (
+            f'<p style="color:#dc2626">[{tipo} {num} — no definido]</p>'
         )
-        if m:
-            tipo = m.group(1).capitalize()
-            num = m.group(2)
-            key = f"[{m.group(1).upper()} {num}]"
-            fig = fn_global["figmap"].get(key)
-            if fig:
-                html += _fig_html(fig)
-            else:
-                html += (
-                    f'<p class="body-p" style="color:#dc2626">'
-                    f'[{tipo} {num} — no definido]</p>'
-                )
-            continue
 
-        # Replace [fn] markers with superscript footnote numbers
-        def replace_fn(match: re.Match[str]) -> str:
-            fn_global["counter"] += 1
-            txt = sec_fns[sec_fn_idx[0]] if sec_fn_idx[0] < len(sec_fns) else ""
-            sec_fn_idx[0] += 1
-            idx = len(all_fns)
-            all_fns.append(txt)
-            return f"\x00SUP{fn_global['counter']}\x00{idx}\x01"
+    text = re.sub(
+        r"<p[^>]*>\s*\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]\s*</p>",
+        replace_figure_marker,
+        text,
+        flags=re.I,
+    )
 
-        line = re.sub(r"\[fn\]", replace_fn, para, flags=re.I)
-        line = _xe(line)
+    # Replace [fn] markers (anywhere inline) with the dual screen/print spans
+    def replace_fn(match: re.Match[str]) -> str:
+        fn_global["counter"] += 1
+        txt = sec_fns[sec_fn_idx[0]] if sec_fn_idx[0] < len(sec_fns) else ""
+        sec_fn_idx[0] += 1
+        all_fns.append(txt)
+        c = fn_global["counter"]
+        fn_txt = _xe(txt)
+        return (
+            f'<span class="screen-only"><sup>{c}</sup></span>'
+            f'<span class="print-only fn-print">{fn_txt}</span>'
+        )
 
-        def repl_fn(m: re.Match[str]) -> str:
-            c = m.group(1)
-            idx = int(m.group(2))
-            fn_txt = _xe(all_fns[idx])
-            return (
-                f'<span class="screen-only"><sup>{c}</sup></span>'
-                f'<span class="print-only fn-print">{fn_txt}</span>'
-            )
+    text = re.sub(r"\[fn\]", replace_fn, text, flags=re.I)
 
-        line = re.sub(r"\x00SUP(\d+)\x00(\d+)\x01", repl_fn, line)
-        html += f'<p class="body-p">{line}</p>'
-
-    return html
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -423,6 +435,15 @@ def build_html(d: dict[str, Any]) -> str:
             # Use the same sec_fns list — sec_fn_idx persists, so the
             # subsection continues consuming from where the section left off
             body += _process_block(sub.get("content", ""), sec_fns, fn_global, all_fns)
+            # Sub-subsections (level 3 — 1.1.1)
+            for k, subsub in enumerate(sub.get("subs", [])):
+                body += (
+                    f'<div class="subsub-title">'
+                    f'{i + 1}.{j + 1}.{k + 1}. {_xe(subsub.get("title", ""))}</div>'
+                )
+                body += _process_block(
+                    subsub.get("content", ""), sec_fns, fn_global, all_fns
+                )
 
     # References (on a new page)
     if d.get("refs"):

@@ -137,12 +137,18 @@ const useArticleStore = create((set, get) => ({
     }));
   },
 
-  // Subsections
+  // Subsections (level 2)
   addSubsection: (sectionIndex) =>
     set((s) => ({
       sections: s.sections.map((sec, i) =>
         i === sectionIndex
-          ? { ...sec, subs: [...sec.subs, { title: "", blocks: [{ type: "text", content: "" }] }] }
+          ? {
+              ...sec,
+              subs: [
+                ...sec.subs,
+                { title: "", blocks: [{ type: "text", content: "" }], subs: [] },
+              ],
+            }
           : sec
       ),
     })),
@@ -162,6 +168,67 @@ const useArticleStore = create((set, get) => ({
               ...sec,
               subs: sec.subs.map((sub, j) =>
                 j === subIndex ? { ...sub, [field]: value } : sub
+              ),
+            }
+          : sec
+      ),
+    })),
+
+  // Sub-subsections (level 3 — 1.1.1)
+  addSubsubsection: (sectionIndex, subIndex) =>
+    set((s) => ({
+      sections: s.sections.map((sec, i) =>
+        i === sectionIndex
+          ? {
+              ...sec,
+              subs: sec.subs.map((sub, j) =>
+                j === subIndex
+                  ? {
+                      ...sub,
+                      subs: [
+                        ...(sub.subs || []),
+                        { title: "", blocks: [{ type: "text", content: "" }] },
+                      ],
+                    }
+                  : sub
+              ),
+            }
+          : sec
+      ),
+    })),
+  removeSubsubsection: (sectionIndex, subIndex, subsubIndex) =>
+    set((s) => ({
+      sections: s.sections.map((sec, i) =>
+        i === sectionIndex
+          ? {
+              ...sec,
+              subs: sec.subs.map((sub, j) =>
+                j === subIndex
+                  ? {
+                      ...sub,
+                      subs: (sub.subs || []).filter((_, k) => k !== subsubIndex),
+                    }
+                  : sub
+              ),
+            }
+          : sec
+      ),
+    })),
+  updateSubsubsection: (sectionIndex, subIndex, subsubIndex, field, value) =>
+    set((s) => ({
+      sections: s.sections.map((sec, i) =>
+        i === sectionIndex
+          ? {
+              ...sec,
+              subs: sec.subs.map((sub, j) =>
+                j === subIndex
+                  ? {
+                      ...sub,
+                      subs: (sub.subs || []).map((subsub, k) =>
+                        k === subsubIndex ? { ...subsub, [field]: value } : subsub
+                      ),
+                    }
+                  : sub
               ),
             }
           : sec
@@ -237,20 +304,24 @@ const useArticleStore = create((set, get) => ({
           lastWasFootnote = true;
         }
       }
-      const subs = (sec.subs || []).map((sub) => {
-        let subContent = "";
-        let subLastFn = false;
-        // Fallback to text content if blocks don't exist yet
-        const blocksToProcess = (sub.blocks && sub.blocks.length > 0) ? sub.blocks : [{type: "text", content: sub.content || ""}];
-        
+      // Helper to flatten blocks of a sub or subsub into a content string,
+      // pushing footnotes into the parent section's fns array (so they share
+      // sequential numbering across section + subs + subsubs).
+      const blocksToContent = (rawBlocks) => {
+        let str = "";
+        let lastFn = false;
+        const blocksToProcess =
+          rawBlocks && rawBlocks.length > 0
+            ? rawBlocks
+            : [{ type: "text", content: "" }];
         for (const block of blocksToProcess) {
           if (block.type === "text") {
-            if (subLastFn) {
-              subContent += block.content;
+            if (lastFn) {
+              str += block.content;
             } else {
-              subContent += (subContent && !subContent.endsWith("\n") ? "\n" : "") + block.content;
+              str += (str && !str.endsWith("\n") ? "\n" : "") + block.content;
             }
-            subLastFn = false;
+            lastFn = false;
           } else if (block.type === "figure") {
             figs.push({
               tipo: block.tipo,
@@ -261,19 +332,35 @@ const useArticleStore = create((set, get) => ({
               width: block.imgW || null,
               height: block.imgH || null,
             });
-            subContent += (subContent && !subContent.endsWith("\n") ? "\n" : "") + `[${block.tipo.toUpperCase()} ${block.num}]`;
-            subLastFn = false;
+            str +=
+              (str && !str.endsWith("\n") ? "\n" : "") +
+              `[${block.tipo.toUpperCase()} ${block.num}]`;
+            lastFn = false;
           } else if (block.type === "footnote") {
             fns.push(block.text || "");
-            subContent += "[fn]";
-            subLastFn = true;
+            str += "[fn]";
+            lastFn = true;
           }
         }
-        return {
-          title: sub.title,
-          content: subContent,
-        };
-      });
+        return str;
+      };
+
+      const subs = (sec.subs || []).map((sub) => ({
+        title: sub.title,
+        content: blocksToContent(
+          sub.blocks && sub.blocks.length > 0
+            ? sub.blocks
+            : [{ type: "text", content: sub.content || "" }]
+        ),
+        subs: (sub.subs || []).map((subsub) => ({
+          title: subsub.title,
+          content: blocksToContent(
+            subsub.blocks && subsub.blocks.length > 0
+              ? subsub.blocks
+              : [{ type: "text", content: subsub.content || "" }]
+          ),
+        })),
+      }));
 
       return {
         title: sec.title,
@@ -376,13 +463,15 @@ const useArticleStore = create((set, get) => ({
       // Parse main section
       const blocks = parseContentToBlocks(sec.content || "", secFns, fnIdxRef);
 
-      // Parse subsections
-      const parsedSubs = (sec.subs || []).map(sub => {
-        return {
-          title: sub.title,
-          blocks: parseContentToBlocks(sub.content || "", secFns, fnIdxRef)
-        };
-      });
+      // Parse subsections (and their sub-subsections)
+      const parsedSubs = (sec.subs || []).map((sub) => ({
+        title: sub.title,
+        blocks: parseContentToBlocks(sub.content || "", secFns, fnIdxRef),
+        subs: (sub.subs || []).map((subsub) => ({
+          title: subsub.title,
+          blocks: parseContentToBlocks(subsub.content || "", secFns, fnIdxRef),
+        })),
+      }));
 
       return { title: sec.title, blocks, fns: [], subs: parsedSubs };
     });

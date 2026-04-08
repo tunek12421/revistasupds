@@ -12,9 +12,15 @@ class AuthorSchema(BaseModel):
     orcid: str = ""
 
 
+class SubSubsectionSchema(BaseModel):
+    title: str
+    content: str = ""
+
+
 class SubsectionSchema(BaseModel):
     title: str
     content: str = ""
+    subs: list[SubSubsectionSchema] = []
 
 
 class SectionSchema(BaseModel):
