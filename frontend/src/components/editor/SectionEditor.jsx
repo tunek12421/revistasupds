@@ -5,6 +5,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
+import Paragraph from "@tiptap/extension-paragraph";
 import { FigureNode, FootnoteNode } from "./tiptapUtils";
 import { tiptapToBlocks, blocksToTiptapJSON } from "./tiptapToBlocks";
 import {
@@ -25,10 +26,57 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
+  Indent,
+  Outdent,
   Link as LinkIcon,
   Undo2,
   Redo2,
 } from "lucide-react";
+
+// Extension for paragraph indentation (APA style typically uses text-indent for the first line or padding for the whole block)
+const IndentParagraph = Paragraph.extend({
+  addAttributes() {
+    return {
+      indent: {
+        default: 0,
+        parseHTML: element => {
+          const indent = element.style.marginLeft || element.style.textIndent;
+          return indent ? parseInt(indent, 10) : 0;
+        },
+        renderHTML: attributes => {
+          if (!attributes.indent) return {};
+          // Applying text-indent for APA first-line indent, or margin for block indent
+          return { style: `text-indent: ${attributes.indent}px` };
+        },
+      },
+    };
+  },
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      indent: () => ({ tr, state, dispatch }) => {
+        const { selection } = state;
+        tr = tr.setSelection(selection);
+        tr = this.editor.commands.updateAttributes('paragraph', { indent: 36 }); 
+        return true;
+      },
+      outdent: () => ({ tr, state, dispatch }) => {
+        const { selection } = state;
+        tr = tr.setSelection(selection);
+        tr = this.editor.commands.updateAttributes('paragraph', { indent: 0 });
+        return true;
+      },
+      toggleIndent: () => ({ editor }) => {
+        const currentIndent = editor.getAttributes("paragraph").indent || 0;
+        if (currentIndent > 0) {
+          return editor.commands.outdent();
+        } else {
+          return editor.commands.indent();
+        }
+      }
+    };
+  },
+});
 
 function ToolbarButton({ onClick, active, disabled, title, children }) {
   return (
@@ -57,6 +105,7 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false 
   const editor = useEditor({
     extensions: [
       StarterKit,
+      IndentParagraph,
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: false, autolink: true }),
@@ -209,6 +258,13 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false 
           title="Justificar"
         >
           <AlignJustify size={14} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleIndent().run()}
+          active={editor.getAttributes("paragraph").indent > 0}
+          title="Sangría APA (primera línea)"
+        >
+          <Indent size={14} />
         </ToolbarButton>
 
         <Divider />

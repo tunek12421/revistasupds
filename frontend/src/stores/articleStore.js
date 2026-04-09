@@ -274,6 +274,8 @@ const useArticleStore = create((set, get) => ({
       let content = "";
       const fns = [];
       let lastWasFootnote = false;
+      let expectedFnsInContent = 0; // Track footnotes in the main section content
+      
       for (const block of sec.blocks || []) {
         if (block.type === "text") {
           if (lastWasFootnote) {
@@ -299,26 +301,37 @@ const useArticleStore = create((set, get) => ({
           lastWasFootnote = false;
         } else if (block.type === "footnote") {
           fns.push(block.text || "");
-          // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
-          const lastClose = content.lastIndexOf("</p>");
-          if (lastClose !== -1) {
-            content = content.slice(0, lastClose) + "[fn]" + content.slice(lastClose);
-          } else {
-            content += "<p>[fn]</p>";
+          expectedFnsInContent++;
+          
+          // Check if the current content ALREADY has enough [fn] markers
+          // This allows new inline footnotes to render [fn] exactly where they belong in the text
+          const existingMarkers = (content.match(/\[fn\]/g) || []).length;
+          
+          if (existingMarkers < expectedFnsInContent) {
+            // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
+            const lastClose = content.lastIndexOf("</p>");
+            if (lastClose !== -1) {
+              content = content.slice(0, lastClose) + "[fn]" + content.slice(lastClose);
+            } else {
+              content += "<p>[fn]</p>";
+            }
           }
           lastWasFootnote = false;
         }
       }
+      
       // Helper to flatten blocks of a sub or subsub into a content string,
       // pushing footnotes into the parent section's fns array (so they share
       // sequential numbering across section + subs + subsubs).
       const blocksToContent = (rawBlocks) => {
         let str = "";
         let lastFn = false;
+        let expectedFnsInStr = 0; // Track footnotes in this sub-section
         const blocksToProcess =
           rawBlocks && rawBlocks.length > 0
             ? rawBlocks
             : [{ type: "text", content: "" }];
+            
         for (const block of blocksToProcess) {
           if (block.type === "text") {
             if (lastFn) {
@@ -343,12 +356,17 @@ const useArticleStore = create((set, get) => ({
             lastFn = false;
           } else if (block.type === "footnote") {
             fns.push(block.text || "");
-            // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
-            const lastClose = str.lastIndexOf("</p>");
-            if (lastClose !== -1) {
-              str = str.slice(0, lastClose) + "[fn]" + str.slice(lastClose);
-            } else {
-              str += "<p>[fn]</p>";
+            expectedFnsInStr++;
+            
+            const existingMarkers = (str.match(/\[fn\]/g) || []).length;
+            if (existingMarkers < expectedFnsInStr) {
+              // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
+              const lastClose = str.lastIndexOf("</p>");
+              if (lastClose !== -1) {
+                str = str.slice(0, lastClose) + "[fn]" + str.slice(lastClose);
+              } else {
+                str += "<p>[fn]</p>";
+              }
             }
             lastFn = false;
           }
@@ -418,78 +436,13 @@ const useArticleStore = create((set, get) => ({
     const parseContentToBlocks = (contentStr, fnsArray, fnIdxRef) => {
       const blocks = [];
 
-      // Helper: split a chunk of HTML by [fn] markers, handling both
-      // the new format (<p>text[fn]</p>) and the legacy format (</p>[fn])
-      const splitFootnotesInChunk = (chunk) => {
-        let remaining = chunk;
-        let textBuf = "";
-
-        const pushTextIfAny = () => {
-          if (textBuf.trim()) {
-            blocks.push({ type: "text", content: textBuf.trim() });
-            textBuf = "";
-          }
-        };
-
-        const pushFootnote = () => {
-          blocks.push({
-            type: "footnote",
-            text: fnsArray[fnIdxRef.current] || "",
-          });
-          fnIdxRef.current++;
-        };
-
-        while (true) {
-          const fnIdx = remaining.indexOf("[fn]");
-          if (fnIdx === -1) {
-            textBuf += remaining;
-            break;
-          }
-
-          const beforeFn = remaining.slice(0, fnIdx);
-          const afterFn = remaining.slice(fnIdx + 4);
-
-          // Check if we are inside a paragraph: last <p comes after last </p>
-          const combinedBefore = textBuf + beforeFn;
-          const lastOpenP = combinedBefore.lastIndexOf("<p");
-          const lastCloseP = combinedBefore.lastIndexOf("</p>");
-          const insideP = lastOpenP > lastCloseP;
-
-          if (insideP) {
-            const closeP = afterFn.indexOf("</p>");
-            if (closeP === -1) {
-              // Malformed: fall back to legacy behavior
-              textBuf += beforeFn;
-              pushTextIfAny();
-              pushFootnote();
-              remaining = afterFn;
-            } else {
-              // Reconstruct paragraph without the [fn]
-              const textInside = afterFn.slice(0, closeP);
-              textBuf += beforeFn + textInside + "</p>";
-              pushTextIfAny();
-              pushFootnote();
-              remaining = afterFn.slice(closeP + 4); // skip "</p>"
-            }
-          } else {
-            // Legacy: [fn] outside any paragraph
-            textBuf += beforeFn;
-            pushTextIfAny();
-            pushFootnote();
-            remaining = afterFn;
-          }
-        }
-
-        pushTextIfAny();
-      };
-
       // Split content by lines to handle figure markers (whole-line markers)
       const lines = (contentStr || "").split("\n");
       let chunkBuf = "";
 
       const flushChunk = () => {
-        if (chunkBuf) {
-          splitFootnotesInChunk(chunkBuf);
+        if (chunkBuf.trim()) {
+          blocks.push({ type: "text", content: chunkBuf.trim() });
           chunkBuf = "";
         }
       };
@@ -513,6 +466,18 @@ const useArticleStore = create((set, get) => ({
         }
       }
       flushChunk();
+
+      // Extract footnotes corresponding to this section/subsection chunk
+      const fnMatches = (contentStr.match(/\[fn\]/g) || []).length;
+      for (let i = 0; i < fnMatches; i++) {
+        if (fnIdxRef.current < fnsArray.length) {
+          blocks.push({
+            type: "footnote",
+            text: fnsArray[fnIdxRef.current] || ""
+          });
+          fnIdxRef.current++;
+        }
+      }
 
       if (blocks.length === 0) blocks.push({ type: "text", content: "" });
       return blocks;

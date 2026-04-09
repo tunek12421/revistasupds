@@ -7,8 +7,8 @@ export default function FootnoteNodeView(props) {
   const attrs = node.attrs;
 
   return (
-    <NodeViewWrapper className="footnote-node-wrapper inline-block mx-1 align-middle" contentEditable="false">
-      <div className="border border-amber-200 bg-amber-50 rounded-lg px-2 py-1 flex items-center gap-2 group relative shadow-sm">
+    <NodeViewWrapper className="footnote-node-wrapper inline-flex mx-0.5 align-middle" contentEditable="false">
+      <div className="border border-amber-200 bg-amber-50 rounded-lg px-2 py-1 flex items-center gap-2 group relative shadow-sm inline-flex">
         <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
           FN {attrs.num || 1}
         </span>

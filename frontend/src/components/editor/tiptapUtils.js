@@ -37,8 +37,9 @@ export const FigureNode = Node.create({
 
 export const FootnoteNode = Node.create({
   name: 'footnoteNode',
-  group: 'block',
+  group: 'inline',
   atom: true,
+  inline: true,
 
   addAttributes() {
     return {
@@ -48,11 +49,11 @@ export const FootnoteNode = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-tiptap-footnote]' }];
+    return [{ tag: 'span[data-tiptap-footnote]' }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes({ 'data-tiptap-footnote': '' }, HTMLAttributes)];
+    return ['span', mergeAttributes({ 'data-tiptap-footnote': '' }, HTMLAttributes)];
   },
 
   addNodeView() {
