@@ -299,9 +299,14 @@ const useArticleStore = create((set, get) => ({
           lastWasFootnote = false;
         } else if (block.type === "footnote") {
           fns.push(block.text || "");
-          // Append [fn] inline (no line break)
-          content += "[fn]";
-          lastWasFootnote = true;
+          // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
+          const lastClose = content.lastIndexOf("</p>");
+          if (lastClose !== -1) {
+            content = content.slice(0, lastClose) + "[fn]" + content.slice(lastClose);
+          } else {
+            content += "<p>[fn]</p>";
+          }
+          lastWasFootnote = false;
         }
       }
       // Helper to flatten blocks of a sub or subsub into a content string,
@@ -338,8 +343,14 @@ const useArticleStore = create((set, get) => ({
             lastFn = false;
           } else if (block.type === "footnote") {
             fns.push(block.text || "");
-            str += "[fn]";
-            lastFn = true;
+            // Insert [fn] BEFORE the last </p> so it ends up inline inside the paragraph
+            const lastClose = str.lastIndexOf("</p>");
+            if (lastClose !== -1) {
+              str = str.slice(0, lastClose) + "[fn]" + str.slice(lastClose);
+            } else {
+              str += "<p>[fn]</p>";
+            }
+            lastFn = false;
           }
         }
         return str;
@@ -406,36 +417,87 @@ const useArticleStore = create((set, get) => ({
 
     const parseContentToBlocks = (contentStr, fnsArray, fnIdxRef) => {
       const blocks = [];
-      const lines = (contentStr || "").split("\n");
-      let textBuf = "";
 
-      const flushText = () => {
-        if (textBuf.trim()) {
-          const parts = textBuf.split(/(\[fn\])/gi);
-          let cleanText = "";
-          for (const part of parts) {
-            if (/^\[fn\]$/i.test(part)) {
-              if (cleanText.trim()) {
-                blocks.push({ type: "text", content: cleanText.trim() });
-                cleanText = "";
-              }
-              blocks.push({ type: "footnote", text: fnsArray[fnIdxRef.current] || "" });
-              fnIdxRef.current++;
+      // Helper: split a chunk of HTML by [fn] markers, handling both
+      // the new format (<p>text[fn]</p>) and the legacy format (</p>[fn])
+      const splitFootnotesInChunk = (chunk) => {
+        let remaining = chunk;
+        let textBuf = "";
+
+        const pushTextIfAny = () => {
+          if (textBuf.trim()) {
+            blocks.push({ type: "text", content: textBuf.trim() });
+            textBuf = "";
+          }
+        };
+
+        const pushFootnote = () => {
+          blocks.push({
+            type: "footnote",
+            text: fnsArray[fnIdxRef.current] || "",
+          });
+          fnIdxRef.current++;
+        };
+
+        while (true) {
+          const fnIdx = remaining.indexOf("[fn]");
+          if (fnIdx === -1) {
+            textBuf += remaining;
+            break;
+          }
+
+          const beforeFn = remaining.slice(0, fnIdx);
+          const afterFn = remaining.slice(fnIdx + 4);
+
+          // Check if we are inside a paragraph: last <p comes after last </p>
+          const combinedBefore = textBuf + beforeFn;
+          const lastOpenP = combinedBefore.lastIndexOf("<p");
+          const lastCloseP = combinedBefore.lastIndexOf("</p>");
+          const insideP = lastOpenP > lastCloseP;
+
+          if (insideP) {
+            const closeP = afterFn.indexOf("</p>");
+            if (closeP === -1) {
+              // Malformed: fall back to legacy behavior
+              textBuf += beforeFn;
+              pushTextIfAny();
+              pushFootnote();
+              remaining = afterFn;
             } else {
-              cleanText += part;
+              // Reconstruct paragraph without the [fn]
+              const textInside = afterFn.slice(0, closeP);
+              textBuf += beforeFn + textInside + "</p>";
+              pushTextIfAny();
+              pushFootnote();
+              remaining = afterFn.slice(closeP + 4); // skip "</p>"
             }
+          } else {
+            // Legacy: [fn] outside any paragraph
+            textBuf += beforeFn;
+            pushTextIfAny();
+            pushFootnote();
+            remaining = afterFn;
           }
-          if (cleanText.trim()) {
-            blocks.push({ type: "text", content: cleanText.trim() });
-          }
-          textBuf = "";
+        }
+
+        pushTextIfAny();
+      };
+
+      // Split content by lines to handle figure markers (whole-line markers)
+      const lines = (contentStr || "").split("\n");
+      let chunkBuf = "";
+
+      const flushChunk = () => {
+        if (chunkBuf) {
+          splitFootnotesInChunk(chunkBuf);
+          chunkBuf = "";
         }
       };
 
       for (const line of lines) {
         const match = line.trim().match(/^\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]$/i);
         if (match) {
-          flushText();
+          flushChunk();
           const key = `[${match[1].toUpperCase()} ${match[2]}]`;
           const fig = figsByKey[key];
           blocks.push({
@@ -447,12 +509,12 @@ const useArticleStore = create((set, get) => ({
             src: fig?.src || "",
           });
         } else {
-          textBuf += (textBuf ? "\n" : "") + line;
+          chunkBuf += (chunkBuf ? "\n" : "") + line;
         }
       }
-      flushText();
+      flushChunk();
+
       if (blocks.length === 0) blocks.push({ type: "text", content: "" });
-      
       return blocks;
     };
 
