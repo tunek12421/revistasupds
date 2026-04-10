@@ -165,17 +165,62 @@ export default function TitlePanel() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Referencia de cita
+              Volumen
             </label>
             <input
               type="text"
-              value={store.citeRef}
-              onChange={(e) => store.setField("citeRef", e.target.value)}
+              value={store.volume}
+              onChange={(e) => store.setField("volume", e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-              placeholder="Estudios Ambientales Revista Latinoamericana, Vol(Num), pp-pp"
+              placeholder="1"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Número
+            </label>
+            <input
+              type="text"
+              value={store.number}
+              onChange={(e) => store.setField("number", e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+              placeholder="1"
             />
           </div>
         </div>
+
+        {/* Auto-generated citation preview */}
+        {(store.titleEs || store.authors.length > 0) && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Citación generada (APA)
+            </p>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              {(() => {
+                const a = store.authors[0];
+                let authorCite = "";
+                if (a) {
+                  if (a.name.includes(",")) {
+                    const [last, first] = a.name.split(",", 2);
+                    const initials = (first || "").trim().split(/\s+/).map(w => w[0]?.toUpperCase() + ".").join(" ");
+                    authorCite = `${last.trim()}, ${initials}`;
+                  } else {
+                    const parts = a.name.trim().split(/\s+/);
+                    const last = parts.pop() || "";
+                    const initials = parts.map(w => w[0]?.toUpperCase() + ".").join(" ");
+                    authorCite = `${last}, ${initials}`;
+                  }
+                }
+                const year = store.datePublished ? store.datePublished.slice(0, 4) : "s.f.";
+                const volNum = store.volume && store.number
+                  ? `, ${store.volume}(${store.number})`
+                  : store.volume ? `, ${store.volume}` : "";
+                const doiUrl = store.doi ? ` https://doi.org/${store.doi}` : "";
+                return `${authorCite} (${year}). ${store.titleEs || "—"}. Revista Estudios Ambientales${volNum}.${doiUrl}`;
+              })()}
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>

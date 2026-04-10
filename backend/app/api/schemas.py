@@ -47,6 +47,8 @@ class ArticlePayload(BaseModel):
     titleEn: str = ""
     doi: str = ""
     citeRef: str = ""
+    volume: str = ""
+    number: str = ""
     dateReceived: str = ""
     dateAccepted: str = ""
     datePublished: str = ""

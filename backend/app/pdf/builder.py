@@ -314,7 +314,7 @@ def build_html(d: dict[str, Any]) -> str:
             f'<span class="author-orcid">'
             f'<a href="https://orcid.org/{_xe(orcid_id)}" style="text-decoration:none;color:#a6ce39">'
             f'<img class="orcid-img" src="{_logos["orcid"]}"> '
-            f'{_xe(orcid_id)}</a></span>'
+            f'https://orcid.org/{_xe(orcid_id)}</a></span>'
             if orcid_id
             else ""
         )
@@ -334,11 +334,27 @@ def build_html(d: dict[str, Any]) -> str:
             f"</div>{inst}{em}{orc}</div>"
         )
 
-    # Sidebar
+    # Sidebar — auto-generate APA citation
+    # Format: Apellido, Iniciales. (año). Título. Revista Estudios Ambientales, vol(num). DOI
     auth0 = authors[0].get("name", "") if authors else ""
-    surname = auth0.split(",")[0].strip() if "," in auth0 else auth0
+    # Extract surname and initials from "Apellido, Nombre" or "Nombre Apellido"
+    if "," in auth0:
+        parts = auth0.split(",", 1)
+        surname = parts[0].strip()
+        given = parts[1].strip()
+    else:
+        name_parts = auth0.strip().split()
+        surname = name_parts[-1] if name_parts else ""
+        given = " ".join(name_parts[:-1]) if len(name_parts) > 1 else ""
+    initials = ". ".join(w[0].upper() for w in given.split() if w) + "." if given else ""
+    pub_year = d.get("datePublished", "")[:4] if d.get("datePublished") else "s.f."
+    vol = d.get("volume", "")
+    num = d.get("number", "")
+    vol_num = f", {vol}({num})" if vol and num else (f", {vol}" if vol else "")
+    doi_cite = f" https://doi.org/{doi}" if doi else ""
     fc = _xe(
-        f'{surname}. {d.get("titleEs", "")}. {d.get("citeRef", "")}. {doi}'
+        f'{surname}, {initials} ({pub_year}). {d.get("titleEs", "")}. '
+        f'Revista Estudios Ambientales{vol_num}.{doi_cite}'
     )
     sbd = ""
     if d.get("dateReceived"):
