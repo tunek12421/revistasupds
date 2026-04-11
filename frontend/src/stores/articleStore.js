@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 const defaultState = {
   pageStart: 1,
+  pageEnd: null,
   docType: "Artículo",
   titleEs: "",
   titleEn: "",
@@ -35,7 +36,18 @@ const useArticleStore = create((set, get) => ({
   // Authors
   addAuthor: () =>
     set((s) => ({
-      authors: [...s.authors, { name: "", inst: "", email: "", orcid: "" }],
+      authors: [
+        ...s.authors,
+        {
+          name: "",
+          firstName: "",
+          lastName1: "",
+          lastName2: "",
+          inst: "",
+          email: "",
+          orcid: "",
+        },
+      ],
     })),
   removeAuthor: (index) =>
     set((s) => ({ authors: s.authors.filter((_, i) => i !== index) })),
@@ -400,8 +412,25 @@ const useArticleStore = create((set, get) => ({
         subs,
       };
     });
+    // Normalize authors: compute `name` from split fields when available,
+    // otherwise keep legacy `name`.
+    const normalizedAuthors = (s.authors || []).map((a) => {
+      const hasSplit = (a.firstName || a.lastName1 || a.lastName2);
+      const fullName = hasSplit
+        ? [a.firstName, a.lastName1, a.lastName2].map((p) => (p || "").trim()).filter(Boolean).join(" ")
+        : (a.name || "");
+      return {
+        ...a,
+        name: fullName,
+        firstName: a.firstName || "",
+        lastName1: a.lastName1 || "",
+        lastName2: a.lastName2 || "",
+      };
+    });
+
     return {
       pageStart: s.pageStart,
+      pageEnd: s.pageEnd,
       docType: s.docType,
       titleEs: s.titleEs,
       titleEn: s.titleEn,
@@ -413,7 +442,7 @@ const useArticleStore = create((set, get) => ({
       dateAccepted: s.dateAccepted,
       datePublished: s.datePublished,
       lic: s.lic,
-      authors: s.authors,
+      authors: normalizedAuthors,
       absEs: s.absEs,
       kwEs: s.kwEs,
       absEn: s.absEn,
@@ -506,7 +535,24 @@ const useArticleStore = create((set, get) => ({
 
       return { title: sec.title, blocks, fns: [], subs: parsedSubs };
     });
-    set({ ...data, sections, figs: undefined });
+    // Migrate legacy authors: if they only have `name`, try to split into fields
+    const migratedAuthors = (data.authors || []).map((a) => {
+      if (a.firstName || a.lastName1 || a.lastName2) return a;
+      const parts = (a.name || "").trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return a;
+      if (parts.length === 1) {
+        return { ...a, firstName: "", lastName1: parts[0], lastName2: "" };
+      }
+      if (parts.length === 2) {
+        return { ...a, firstName: parts[0], lastName1: parts[1], lastName2: "" };
+      }
+      // 3+ parts: assume last 2 are surnames (paterno + materno), rest are nombres
+      const lastName2 = parts.pop();
+      const lastName1 = parts.pop();
+      const firstName = parts.join(" ");
+      return { ...a, firstName, lastName1, lastName2 };
+    });
+    set({ ...data, sections, authors: migratedAuthors, figs: undefined });
   },
 }));
 

@@ -6,7 +6,10 @@ from pydantic import BaseModel
 
 
 class AuthorSchema(BaseModel):
-    name: str
+    name: str = ""  # full name (backward compat + display)
+    firstName: str = ""  # nombres (e.g. "Alessandra Joselith")
+    lastName1: str = ""  # apellido paterno (e.g. "Reque")
+    lastName2: str = ""  # apellido materno, optional for foreign authors
     inst: str = ""
     email: str = ""
     orcid: str = ""
@@ -42,6 +45,7 @@ class FigureSchema(BaseModel):
 
 class ArticlePayload(BaseModel):
     pageStart: int = 1
+    pageEnd: int | None = None
     docType: str = "Artículo"
     titleEs: str = ""
     titleEn: str = ""

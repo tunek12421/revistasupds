@@ -334,27 +334,70 @@ def build_html(d: dict[str, Any]) -> str:
             f"</div>{inst}{em}{orc}</div>"
         )
 
-    # Sidebar — auto-generate APA citation
-    # Format: Apellido, Iniciales. (año). Título. Revista Estudios Ambientales, vol(num). DOI
-    auth0 = authors[0].get("name", "") if authors else ""
-    # Extract surname and initials from "Apellido, Nombre" or "Nombre Apellido"
-    if "," in auth0:
-        parts = auth0.split(",", 1)
-        surname = parts[0].strip()
-        given = parts[1].strip()
+    # Sidebar — auto-generate APA citation (with italics, multi-author, page range)
+    # Format: Apellido1 Apellido2, N. N. (año). Título. <em>Revista, vol</em>(num), pp–pp. DOI
+
+    def _format_author_apa(a: dict[str, Any]) -> str:
+        # Prefer split fields; fall back to parsing the legacy `name`
+        last1 = (a.get("lastName1") or "").strip()
+        last2 = (a.get("lastName2") or "").strip()
+        first = (a.get("firstName") or "").strip()
+        if not (last1 or last2 or first):
+            name = (a.get("name") or "").strip()
+            parts = name.split()
+            if len(parts) >= 3:
+                last2 = parts[-1]
+                last1 = parts[-2]
+                first = " ".join(parts[:-2])
+            elif len(parts) == 2:
+                last1 = parts[1]
+                first = parts[0]
+            elif len(parts) == 1:
+                last1 = parts[0]
+        surnames = " ".join(p for p in (last1, last2) if p)
+        initials = " ".join(w[0].upper() + "." for w in first.split() if w)
+        if surnames and initials:
+            return f"{surnames}, {initials}"
+        return surnames or initials
+
+    author_cites = [_format_author_apa(a) for a in authors if a]
+    author_cites = [c for c in author_cites if c]
+    if not author_cites:
+        authors_str = ""
+    elif len(author_cites) == 1:
+        authors_str = author_cites[0]
+    elif len(author_cites) == 2:
+        authors_str = f"{author_cites[0]}, & {author_cites[1]}"
     else:
-        name_parts = auth0.strip().split()
-        surname = name_parts[-1] if name_parts else ""
-        given = " ".join(name_parts[:-1]) if len(name_parts) > 1 else ""
-    initials = ". ".join(w[0].upper() for w in given.split() if w) + "." if given else ""
+        authors_str = ", ".join(author_cites[:-1]) + f", & {author_cites[-1]}"
+
     pub_year = d.get("datePublished", "")[:4] if d.get("datePublished") else "s.f."
-    vol = d.get("volume", "")
-    num = d.get("number", "")
-    vol_num = f", {vol}({num})" if vol and num else (f", {vol}" if vol else "")
-    doi_cite = f" https://doi.org/{doi}" if doi else ""
-    fc = _xe(
-        f'{surname}, {initials} ({pub_year}). {d.get("titleEs", "")}. '
-        f'Revista Estudios Ambientales{vol_num}.{doi_cite}'
+    vol = str(d.get("volume") or "").strip()
+    num = str(d.get("number") or "").strip()
+    page_start = d.get("pageStart")
+    page_end = d.get("pageEnd")
+
+    # Build italic journal + volume part separately so we can inject <em> tags
+    # after _xe escaping of the rest.
+    journal_em = "<em>Revista Estudios Ambientales"
+    if vol:
+        journal_em += f", {_xe(vol)}"
+    journal_em += "</em>"
+    if num:
+        journal_em += f"({_xe(num)})"
+
+    if page_start and page_end:
+        pages_str = f", {page_start}–{page_end}"
+    elif page_start:
+        pages_str = f", {page_start}"
+    else:
+        pages_str = ""
+
+    doi_cite = f" https://doi.org/{_xe(doi)}" if doi else ""
+
+    fc = (
+        f"{_xe(authors_str)} ({_xe(pub_year)}). {_xe(d.get('titleEs', ''))}. "
+        f"{journal_em}{_xe(pages_str)}.{doi_cite}"
     )
     sbd = ""
     if d.get("dateReceived"):

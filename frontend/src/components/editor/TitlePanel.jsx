@@ -189,7 +189,7 @@ export default function TitlePanel() {
           </div>
         </div>
 
-        {/* Auto-generated citation preview */}
+        {/* Auto-generated citation preview (APA) */}
         {(store.titleEs || store.authors.length > 0) && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
@@ -197,26 +197,54 @@ export default function TitlePanel() {
             </p>
             <p className="text-xs text-gray-700 leading-relaxed">
               {(() => {
-                const a = store.authors[0];
-                let authorCite = "";
-                if (a) {
-                  if (a.name.includes(",")) {
-                    const [last, first] = a.name.split(",", 2);
-                    const initials = (first || "").trim().split(/\s+/).map(w => w[0]?.toUpperCase() + ".").join(" ");
-                    authorCite = `${last.trim()}, ${initials}`;
-                  } else {
-                    const parts = a.name.trim().split(/\s+/);
-                    const last = parts.pop() || "";
-                    const initials = parts.map(w => w[0]?.toUpperCase() + ".").join(" ");
-                    authorCite = `${last}, ${initials}`;
+                // Build author citation. For each author:
+                //   "ApellidoPaterno ApellidoMaterno, N. N."
+                // Multiple authors joined with ", " and last one with " & "
+                const formatAuthor = (a) => {
+                  if (!a) return "";
+                  let surnames = "";
+                  let first = "";
+                  if (a.lastName1 || a.lastName2 || a.firstName) {
+                    surnames = [a.lastName1, a.lastName2].map(p => (p || "").trim()).filter(Boolean).join(" ");
+                    first = (a.firstName || "").trim();
+                  } else if (a.name) {
+                    const parts = a.name.trim().split(/\s+/).filter(Boolean);
+                    if (parts.length >= 3) {
+                      surnames = `${parts[parts.length - 2]} ${parts[parts.length - 1]}`;
+                      first = parts.slice(0, -2).join(" ");
+                    } else if (parts.length === 2) {
+                      surnames = parts[1];
+                      first = parts[0];
+                    } else {
+                      surnames = parts.join(" ");
+                    }
                   }
-                }
+                  const initials = first ? first.split(/\s+/).map(w => w[0]?.toUpperCase() + ".").join(" ") : "";
+                  return surnames + (initials ? `, ${initials}` : "");
+                };
+                const authorList = store.authors.map(formatAuthor).filter(Boolean);
+                let authorsCite = "";
+                if (authorList.length === 0) authorsCite = "";
+                else if (authorList.length === 1) authorsCite = authorList[0];
+                else if (authorList.length === 2) authorsCite = `${authorList[0]}, & ${authorList[1]}`;
+                else authorsCite = `${authorList.slice(0, -1).join(", ")}, & ${authorList[authorList.length - 1]}`;
+
                 const year = store.datePublished ? store.datePublished.slice(0, 4) : "s.f.";
-                const volNum = store.volume && store.number
-                  ? `, ${store.volume}(${store.number})`
-                  : store.volume ? `, ${store.volume}` : "";
+                const vol = store.volume || "";
+                const num = store.number || "";
+                const pages = store.pageStart && store.pageEnd
+                  ? `, ${store.pageStart}–${store.pageEnd}`
+                  : store.pageStart ? `, ${store.pageStart}` : "";
                 const doiUrl = store.doi ? ` https://doi.org/${store.doi}` : "";
-                return `${authorCite} (${year}). ${store.titleEs || "—"}. Revista Estudios Ambientales${volNum}.${doiUrl}`;
+                return (
+                  <>
+                    {authorsCite} ({year}). {store.titleEs || "—"}.{" "}
+                    <em>Revista Estudios Ambientales</em>
+                    {vol && <em>, {vol}</em>}
+                    {num && `(${num})`}
+                    {pages}.{doiUrl}
+                  </>
+                );
               })()}
             </p>
           </div>
@@ -258,22 +286,44 @@ export default function TitlePanel() {
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Página de inicio
-          </label>
-          <input
-            type="number"
-            min={1}
-            value={store.pageStart}
-            onChange={(e) =>
-              store.setField("pageStart", parseInt(e.target.value) || 1)
-            }
-            className="w-32 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-          />
-          <p className="text-xs text-gray-400 mt-1">
-            Número de página dentro del volumen de la revista
-          </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Página de inicio
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={store.pageStart}
+              onChange={(e) =>
+                store.setField("pageStart", parseInt(e.target.value) || 1)
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Número de página dentro del volumen
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Página final
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={store.pageEnd || ""}
+              onChange={(e) =>
+                store.setField(
+                  "pageEnd",
+                  e.target.value ? parseInt(e.target.value) : null
+                )
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Para el rango de páginas en la citación (ej: 2–16)
+            </p>
+          </div>
         </div>
 
         {/* License */}

@@ -66,21 +66,53 @@ export default function AuthorsPanel() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Names row — 3 fields (nombres + apellido paterno + apellido materno) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre completo <span className="text-red-500">*</span>
+                  Nombres <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  value={author.name}
+                  value={author.firstName || ""}
                   onChange={(e) =>
-                    updateAuthor(index, "name", e.target.value)
+                    updateAuthor(index, "firstName", e.target.value)
                   }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Nombre Apellido"
+                  placeholder="Alessandra Joselith"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Apellido paterno <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={author.lastName1 || ""}
+                  onChange={(e) =>
+                    updateAuthor(index, "lastName1", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Reque"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Apellido materno
+                </label>
+                <input
+                  type="text"
+                  value={author.lastName2 || ""}
+                  onChange={(e) =>
+                    updateAuthor(index, "lastName2", e.target.value)
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder="Canales (opcional)"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Institución
