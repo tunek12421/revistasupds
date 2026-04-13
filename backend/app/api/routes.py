@@ -10,24 +10,9 @@ from app.auth.utils import get_current_user
 from app.database import get_db
 from app.models.article import Article
 from app.models.user import User
-from app.pdf.builder import build_pdf, build_html
+from app.pdf.builder import build_pdf
 
 router = APIRouter(prefix="/api", tags=["articles"])
-
-
-@router.post("/preview-html")
-async def preview_html(
-    payload: ArticlePayload,
-    current_user: User = Depends(get_current_user),
-):
-    try:
-        html = build_html(payload.model_dump())
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Preview generation failed: {exc}",
-        )
-    return Response(content=html, media_type="text/html")
 
 
 @router.post("/generate-pdf")

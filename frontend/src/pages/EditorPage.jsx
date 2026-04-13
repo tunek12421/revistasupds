@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -28,289 +28,13 @@ function countKw(str) {
   return str.split(",").map((k) => k.trim()).filter(Boolean).length;
 }
 
-const PAGE_W = 794;
-
-function PreviewPane({ html }) {
-  const containerRef = useRef(null);
-  const iframeRef = useRef(null);
-  const [scale, setScale] = useState(0.5);
-  const [containerH, setContainerH] = useState(600);
-  const initialized = useRef(false);
-
-  const recalc = useCallback(() => {
-    const c = containerRef.current;
-    if (!c) return;
-    const s = c.clientWidth / PAGE_W;
-    setScale(s);
-    setContainerH(c.clientHeight);
-  }, []);
-
-  useEffect(() => {
-    recalc();
-    const ro = new ResizeObserver(recalc);
-    if (containerRef.current) ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, [recalc]);
-
-  // Write HTML into iframe without resetting scroll
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe || !html) return;
-
-    const modifiedHtml = html.replace('</body>', `
-      <style>
-        body { background: #e5e7eb; padding: 20px 0; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 20px; overflow-x: hidden; }
-        .body-wrap img { max-height: 800px; max-width: 100%; object-fit: contain; }
-        .page-inner {
-          display: flex;
-          flex-direction: column;
-        }
-        .body-wrap {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-        }
-        .fn-area {
-          margin-top: auto !important;
-        }
-        .page, .page-inner {
-          flex-shrink: 0;
-          background-color: white;
-          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-        }
-      </style>
-      <script>
-        var isPaginating = false;
-
-        function resizeFlowPages() {
-          if (isPaginating) return;
-          isPaginating = true;
-          
-          var currentScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-
-          var originalPage = document.querySelector('.page-inner:not(.cloned-page)');
-          if (originalPage) {
-              var originalBodyWrap = originalPage.querySelector('.body-wrap');
-              if (originalBodyWrap) {
-                  document.querySelectorAll('.cloned-page').forEach(function(p) {
-                      var bw = p.querySelector('.body-wrap');
-                      if (bw) {
-                          while (bw.firstChild) {
-                              originalBodyWrap.appendChild(bw.firstChild);
-                          }
-                      }
-                      p.remove();
-                  });
-
-                  var fnMap = {};
-                  originalPage.querySelectorAll('.fn-area').forEach(function(fna) {
-                      fna.querySelectorAll('.fn-item').forEach(function(item) {
-                          var sup = item.querySelector('sup');
-                          if (sup) fnMap[sup.textContent.trim()] = item.cloneNode(true);
-                      });
-                      fna.remove();
-                  });
-
-                  var childrenArr = Array.from(originalBodyWrap.childNodes);
-                  var children = childrenArr.filter(function(c) { 
-                      return !(c.classList && c.classList.contains('fn-area')); 
-                  });
-
-                  var fragment = document.createDocumentFragment();
-                  children.forEach(function(c) { fragment.appendChild(c); });
-
-                  var currentPage = originalPage;
-                  var currentBodyWrap = originalBodyWrap;
-                  
-                  var pgNumEl = currentPage.querySelector('.pg-num');
-                  var pgNum = (pgNumEl && pgNumEl.textContent) ? (parseInt(pgNumEl.textContent, 10) || 2) : 2;
-                  if (pgNumEl && !pgNumEl.textContent) pgNumEl.textContent = pgNum.toString().padStart(2, "0");
-                  
-                  for (var i = 0; i < children.length; i++) {
-                      var node = children[i];
-                      currentBodyWrap.appendChild(node);
-                      
-                      var addedNotes = [];
-                      if (node.nodeType === 1 && node.querySelectorAll) {
-                          node.querySelectorAll('sup').forEach(function(sup) {
-                              var num = sup.textContent.trim();
-                              if (fnMap[num]) addedNotes.push(num);
-                          });
-                      }
-                      
-                      if (addedNotes.length > 0) {
-                          var fna = currentBodyWrap.querySelector('.fn-area');
-                          if (!fna) { 
-                              fna = document.createElement('div'); 
-                              fna.className = 'fn-area'; 
-                              currentBodyWrap.appendChild(fna); 
-                          }
-                          addedNotes.forEach(function(num) {
-                              fna.appendChild(fnMap[num].cloneNode(true));
-                          });
-                      }
-                      
-                      var currentFna = currentBodyWrap.querySelector('.fn-area');
-                      if (currentFna) currentBodyWrap.appendChild(currentFna);
-                      
-                      var hasOtherContent = false;
-                      for (var c = 0; c < currentBodyWrap.childNodes.length; c++) {
-                          var childNode = currentBodyWrap.childNodes[c];
-                          if (childNode !== node && childNode !== currentFna) hasOtherContent = true;
-                      }
-
-                      if (currentPage.scrollHeight > 1124 && hasOtherContent) {
-                          currentBodyWrap.removeChild(node);
-                          
-                          if (currentFna && addedNotes.length > 0) {
-                              for(var k=0; k<addedNotes.length; k++) {
-                                  if (currentFna.lastChild) currentFna.removeChild(currentFna.lastChild);
-                              }
-                              if (currentFna.childNodes.length === 0) currentFna.remove();
-                          }
-                          
-                          var newPage = currentPage.cloneNode(false);
-                          newPage.classList.add('cloned-page');
-                          newPage.innerHTML = currentPage.innerHTML;
-                          
-                          var newBodyWrap = newPage.querySelector('.body-wrap');
-                          if (newBodyWrap) newBodyWrap.innerHTML = '';
-                          
-                          var obsoleteFna = newPage.querySelector('.fn-area');
-                          if (obsoleteFna) obsoleteFna.remove();
-                          
-                          pgNum++;
-                          var newPgNum = newPage.querySelector('.pg-num');
-                          if (newPgNum) newPgNum.textContent = pgNum.toString().padStart(2, '0');
-                          
-                          currentPage.parentNode.insertBefore(newPage, currentPage.nextSibling);
-                          
-                          currentPage = newPage;
-                          currentBodyWrap = newBodyWrap;
-                          
-                          currentBodyWrap.appendChild(node);
-                          
-                          if (addedNotes.length > 0) {
-                              var newFna = document.createElement('div');
-                              newFna.className = 'fn-area';
-                              currentBodyWrap.appendChild(newFna);
-                              addedNotes.forEach(function(num) {
-                                  newFna.appendChild(fnMap[num].cloneNode(true));
-                              });
-                          }
-                      }
-                  }
-              }
-          }
-          
-          document.querySelectorAll('.page').forEach(function(page) {
-              if (page.classList.contains('page') && !page.classList.contains('page-inner')) {
-                 var p1Left = page.querySelector('.p1-left');
-                 if (p1Left) {
-                    p1Left.style.paddingBottom = '80px';
-                 }
-              }
-          });
-          
-          window.scrollTo(0, currentScrollY);
-          isPaginating = false;
-          
-          document.querySelectorAll('img').forEach(function(img) {
-              if (!img.dataset.resizeListener) {
-                  img.dataset.resizeListener = 'true';
-                  if (!img.complete) {
-                      img.addEventListener('load', function() {
-                          resizeFlowPages();
-                      });
-                  }
-              }
-          });
-        }
-
-        function initPagination() {
-            resizeFlowPages();
-            document.querySelectorAll('img').forEach(function(img) {
-                if (!img.complete) {
-                    img.addEventListener('load', resizeFlowPages);
-                }
-            });
-        }
-
-        if (document.readyState === 'complete') {
-            initPagination();
-        } else {
-            window.addEventListener('load', initPagination);
-        }
-        
-        setTimeout(resizeFlowPages, 500);
-        setTimeout(resizeFlowPages, 1000);
-        setTimeout(resizeFlowPages, 2500);
-      </script>
-    </body>`);
-
-    if (!initialized.current) {
-      // First load: use srcdoc approach
-      iframe.srcdoc = modifiedHtml;
-      initialized.current = true;
-    } else {
-      // Subsequent updates: write directly to preserve scroll
-      try {
-        const doc = iframe.contentDocument;
-        if (doc) {
-          const scrollY = doc.documentElement?.scrollTop || doc.body?.scrollTop || 0;
-          doc.open();
-          doc.write(modifiedHtml);
-          doc.close();
-          // Restore scroll position
-          requestAnimationFrame(() => {
-            if (doc.documentElement) doc.documentElement.scrollTop = scrollY;
-            if (doc.body) doc.body.scrollTop = scrollY;
-          });
-        }
-      } catch {
-        iframe.srcdoc = modifiedHtml;
-      }
-    }
-  }, [html]);
-
-  return (
-    <aside className="w-1/2 border-l border-gray-200 bg-gray-100 overflow-hidden flex flex-col">
-      <div className="flex items-center justify-between px-3 py-1 bg-gray-50 border-b border-gray-200 flex-shrink-0">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-          Vista previa
-        </span>
-        <span className="text-[10px] text-gray-400">En vivo</span>
-      </div>
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-hidden"
-      >
-        <div
-          className="origin-top-left"
-          style={{
-            width: PAGE_W,
-            transform: `scale(${scale})`,
-          }}
-        >
-          <iframe
-            ref={iframeRef}
-            title="live-preview"
-            className="border-0 bg-white"
-            style={{ width: PAGE_W, height: containerH / scale }}
-          />
-        </div>
-      </div>
-    </aside>
-  );
-}
-
 export default function EditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const [articleId, setArticleId] = useState(id || null);
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [warningModal, setWarningModal] = useState(null);
@@ -537,22 +261,26 @@ export default function EditorPage() {
     await actuallyGeneratePdf();
   };
 
-  // Live preview — calls backend for exact same HTML as the PDF
-  const [previewHtml, setPreviewHtml] = useState("");
-  const previewDeps = JSON.stringify(collect());
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (!showPreview) return;
-      try {
-        const res = await api.post("/preview-html", collect(), { responseType: "text" });
-        setPreviewHtml(res.data);
-      } catch {
-        // Silent fail on preview
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewDeps, showPreview]);
+  // PDF preview state
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
+  const [generatingPreview, setGeneratingPreview] = useState(false);
+
+  const handlePreview = async () => {
+    setGeneratingPreview(true);
+    try {
+      const res = await api.post("/generate-pdf", collect(), { responseType: "blob" });
+      const pageEndHeader = res.headers["x-page-end"];
+      if (pageEndHeader) store.setField("pageEnd", parseInt(pageEndHeader));
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      setPdfPreviewUrl(url);
+      if (!showPreview) setShowPreview(true);
+    } catch {
+      alert("Error al generar la vista previa");
+    } finally {
+      setGeneratingPreview(false);
+    }
+  };
 
   const renderStep = () => {
     switch (step) {
@@ -599,11 +327,24 @@ export default function EditorPage() {
               </span>
             )}
             <button
-              onClick={() => setShowPreview((p) => !p)}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#223b87] border border-gray-300 hover:border-[#223b87]/30 px-3 py-1.5 rounded-lg transition"
-              title={showPreview ? "Ocultar vista previa" : "Mostrar vista previa"}
+              onClick={() => {
+                if (showPreview) {
+                  setShowPreview(false);
+                } else {
+                  handlePreview();
+                }
+              }}
+              disabled={generatingPreview}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#223b87] border border-gray-300 hover:border-[#223b87]/30 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+              title={showPreview ? "Ocultar vista previa" : "Generar vista previa PDF"}
             >
-              {showPreview ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
+              {generatingPreview ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : showPreview ? (
+                <PanelRightClose size={15} />
+              ) : (
+                <PanelRightOpen size={15} />
+              )}
               <span className="hidden sm:inline">Vista previa</span>
             </button>
             <button
@@ -637,9 +378,53 @@ export default function EditorPage() {
           </div>
         </main>
 
-        {/* Live preview */}
+        {/* PDF preview panel */}
         {showPreview && (
-          <PreviewPane html={previewHtml} />
+          <aside className="w-1/2 border-l border-gray-200 bg-gray-100 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex-shrink-0">
+              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                Vista previa PDF
+              </span>
+              <button
+                onClick={handlePreview}
+                disabled={generatingPreview}
+                className="flex items-center gap-1 text-[10px] text-[#223b87] hover:underline font-medium disabled:opacity-50"
+              >
+                {generatingPreview ? (
+                  <><Loader2 size={10} className="animate-spin" /> Generando...</>
+                ) : (
+                  pdfPreviewUrl ? "Actualizar" : "Generar"
+                )}
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden flex items-center justify-center">
+              {generatingPreview ? (
+                <div className="text-center">
+                  <Loader2 size={32} className="animate-spin text-[#223b87] mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Generando PDF...</p>
+                </div>
+              ) : pdfPreviewUrl ? (
+                <iframe
+                  src={pdfPreviewUrl}
+                  title="pdf-preview"
+                  className="w-full h-full border-0"
+                />
+              ) : (
+                <div className="text-center px-6">
+                  <FileDown size={40} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-sm text-gray-500 mb-3">
+                    Haz clic en "Vista previa" para generar el PDF
+                  </p>
+                  <button
+                    onClick={handlePreview}
+                    className="text-sm bg-[#223b87] hover:bg-[#1a2f6b] text-white px-4 py-2 rounded-lg transition"
+                  >
+                    Generar vista previa
+                  </button>
+                </div>
+              )}
+            </div>
+          </aside>
         )}
       </div>
 
