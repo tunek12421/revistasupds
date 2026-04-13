@@ -311,7 +311,7 @@ const useArticleStore = create((set, get) => ({
           });
           content +=
             (content && !content.endsWith("\n") ? "\n" : "") +
-            `[${block.tipo.toUpperCase()} ${block.num}]`;
+            `<p>[${block.tipo.toUpperCase()} ${block.num}]</p>`;
           lastWasFootnote = false;
         } else if (block.type === "footnote") {
           fns.push(block.text || "");
@@ -366,7 +366,7 @@ const useArticleStore = create((set, get) => ({
             });
             str +=
               (str && !str.endsWith("\n") ? "\n" : "") +
-              `[${block.tipo.toUpperCase()} ${block.num}]`;
+              `<p>[${block.tipo.toUpperCase()} ${block.num}]</p>`;
             lastFn = false;
           } else if (block.type === "footnote") {
             fns.push(block.text || "");
@@ -481,7 +481,7 @@ const useArticleStore = create((set, get) => ({
       };
 
       for (const line of lines) {
-        const match = line.trim().match(/^\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]$/i);
+        const match = line.trim().match(/^(?:<p[^>]*>)?\s*\[(FIGURA|CUADRO|GRÁFICO|GRAFICO)\s+(\d+)\]\s*(?:<\/p>)?$/i);
         if (match) {
           flushChunk();
           const key = `[${match[1].toUpperCase()} ${match[2]}]`;
