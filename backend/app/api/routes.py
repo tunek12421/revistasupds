@@ -36,16 +36,22 @@ async def generate_pdf(
     current_user: User = Depends(get_current_user),
 ):
     try:
-        pdf_bytes = build_pdf(payload.model_dump())
+        pdf_bytes, total_pages = build_pdf(payload.model_dump())
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"PDF generation failed: {exc}",
         )
+    page_start = payload.pageStart or 1
+    page_end = page_start + total_pages - 1
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=articulo_earl.pdf"},
+        headers={
+            "Content-Disposition": "attachment; filename=articulo_earl.pdf",
+            "X-Page-End": str(page_end),
+            "X-Total-Pages": str(total_pages),
+        },
     )
 
 

@@ -548,7 +548,11 @@ def build_html(d: dict[str, Any]) -> str:
             + f'<div class="screen-only footer"><span>{fl}</span><span>{fr}</span></div></div>'
         )
 
-    reset_val = int(d.get("pageStart", 1)) - 1
+    # The cover (.page, @page main-page) shows pageStart hardcoded.
+    # Body pages (.page-inner, @page b-page) use CSS counter(page).
+    # The cover consumes page counter = pageStart, so the first body
+    # page becomes pageStart + 1. Set counter-reset to pageStart.
+    reset_val = int(d.get("pageStart", 1))
     
     html_doc = (
         f"<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">"
@@ -559,7 +563,10 @@ def build_html(d: dict[str, Any]) -> str:
     return html_doc
 
 
-def build_pdf(d: dict[str, Any]) -> bytes:
-    """Build a PDF from the article data dict and return raw bytes."""
+def build_pdf(d: dict[str, Any]) -> tuple[bytes, int]:
+    """Build a PDF and return (raw_bytes, total_pages)."""
     html_doc = build_html(d)
-    return HTML(string=html_doc).write_pdf()
+    doc = HTML(string=html_doc).render()
+    pdf_bytes = doc.write_pdf()
+    total_pages = len(doc.pages)
+    return pdf_bytes, total_pages

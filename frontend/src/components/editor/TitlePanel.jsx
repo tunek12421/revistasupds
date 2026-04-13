@@ -232,9 +232,9 @@ export default function TitlePanel() {
                 const year = store.datePublished ? store.datePublished.slice(0, 4) : "s.f.";
                 const vol = store.volume || "";
                 const num = store.number || "";
-                const pages = store.pageStart && store.pageEnd
+                const pages = store.pageEnd
                   ? `, ${store.pageStart}–${store.pageEnd}`
-                  : store.pageStart ? `, ${store.pageStart}` : "";
+                  : "";
                 const doiUrl = store.doi ? ` https://doi.org/${store.doi}` : "";
                 return (
                   <>
@@ -286,44 +286,23 @@ export default function TitlePanel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Página de inicio
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={store.pageStart}
-              onChange={(e) =>
-                store.setField("pageStart", parseInt(e.target.value) || 1)
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Número de página dentro del volumen
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Página final
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={store.pageEnd || ""}
-              onChange={(e) =>
-                store.setField(
-                  "pageEnd",
-                  e.target.value ? parseInt(e.target.value) : null
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Para el rango de páginas en la citación (ej: 2–16)
-            </p>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Página de inicio
+          </label>
+          <input
+            type="number"
+            min={1}
+            value={store.pageStart}
+            onChange={(e) =>
+              store.setField("pageStart", parseInt(e.target.value) || 1)
+            }
+            className="w-32 rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#223b87] focus:border-transparent"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            Número de página dentro del volumen · la página final se calcula automáticamente al generar el PDF
+            {store.pageEnd ? ` (última generación: ${store.pageStart}–${store.pageEnd})` : ""}
+          </p>
         </div>
 
         {/* License */}

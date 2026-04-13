@@ -482,6 +482,11 @@ export default function EditorPage() {
     setGenerating(true);
     try {
       const res = await api.post("/generate-pdf", collect(), { responseType: "blob" });
+      // Read auto-calculated pageEnd from response header
+      const pageEndHeader = res.headers["x-page-end"];
+      if (pageEndHeader) {
+        store.setField("pageEnd", parseInt(pageEndHeader));
+      }
       const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
       if (newTab) {
         newTab.location.href = url;
