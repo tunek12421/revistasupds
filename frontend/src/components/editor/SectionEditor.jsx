@@ -101,7 +101,7 @@ function Divider() {
   return <div className="w-px h-5 bg-gray-300 mx-0.5" />;
 }
 
-export default function SectionEditor({ blocks, onChange, hideFootnotes = false }) {
+export default function SectionEditor({ blocks, onChange, hideFootnotes = false, figureOffset = {} }) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -118,7 +118,13 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false 
     onUpdate: ({ editor }) => {
       // Auto-renumber figures and footnotes within this editor instance
       const tr = editor.state.tr;
-      const counts = { Figura: 1, Cuadro: 1, "Gráfico": 1, footnote: 1 };
+      // Start counting from the global offset so numbers are correct across sections
+      const counts = {
+        Figura: (figureOffset.Figura || 0) + 1,
+        Cuadro: (figureOffset.Cuadro || 0) + 1,
+        "Gráfico": (figureOffset["Gráfico"] || 0) + 1,
+        footnote: (figureOffset.footnote || 0) + 1,
+      };
       let changed = false;
 
       editor.state.doc.descendants((node, pos) => {

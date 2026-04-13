@@ -37,6 +37,41 @@ export default function BodyPanel() {
   const removeRef = useArticleStore((s) => s.removeRef);
   const updateRef = useArticleStore((s) => s.updateRef);
 
+  // Helper: count figures/footnotes in a set of blocks
+  const countInBlocks = (blocks) => {
+    const c = { Figura: 0, Cuadro: 0, "Gráfico": 0, footnote: 0 };
+    for (const b of blocks || []) {
+      if (b.type === "figure") c[b.tipo || "Figura"] = (c[b.tipo || "Figura"] || 0) + 1;
+      if (b.type === "footnote") c.footnote++;
+    }
+    return c;
+  };
+
+  const addCounts = (a, b) => ({
+    Figura: (a.Figura || 0) + (b.Figura || 0),
+    Cuadro: (a.Cuadro || 0) + (b.Cuadro || 0),
+    "Gráfico": (a["Gráfico"] || 0) + (b["Gráfico"] || 0),
+    footnote: (a.footnote || 0) + (b.footnote || 0),
+  });
+
+  // Count all figures/footnotes in a subsection (blocks + its sub-subsections)
+  const countInSub = (sub) => {
+    let c = countInBlocks(sub.blocks);
+    for (const subsub of sub.subs || []) {
+      c = addCounts(c, countInBlocks(subsub.blocks));
+    }
+    return c;
+  };
+
+  // Count all figures/footnotes in a section (blocks + subs + subsubs)
+  const countInSection = (sec) => {
+    let c = countInBlocks(sec.blocks);
+    for (const sub of sec.subs || []) {
+      c = addCounts(c, countInSub(sub));
+    }
+    return c;
+  };
+
   const [collapsed, setCollapsed] = useState({});
   const [showRefs, setShowRefs] = useState(true);
 
@@ -81,6 +116,12 @@ export default function BodyPanel() {
           const isCollapsed = collapsed[sIdx];
           const blocks = section.blocks || [{ type: "text", content: section.content || "" }];
 
+          // Calculate global offset: count all figures in sections BEFORE this one
+          let sectionOffset = { Figura: 0, Cuadro: 0, "Gráfico": 0, footnote: 0 };
+          for (let i = 0; i < sIdx; i++) {
+            sectionOffset = addCounts(sectionOffset, countInSection(sections[i]));
+          }
+
           return (
             <div key={sIdx} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
               {/* Header */}
@@ -114,9 +155,10 @@ export default function BodyPanel() {
 
                   {/* Section Tiptap Editor */}
                   <div className="mt-2">
-                    <SectionEditor 
-                      blocks={blocks} 
+                    <SectionEditor
+                      blocks={blocks}
                       onChange={(newBlocks) => updateSection(sIdx, "blocks", newBlocks)}
+                      figureOffset={sectionOffset}
                     />
                   </div>
 
@@ -125,6 +167,13 @@ export default function BodyPanel() {
                     <div className="ml-3 border-l-2 border-[#223b87]/20 pl-3 space-y-3 pt-2">
                       {section.subs.map((sub, subIdx) => {
                         const subBlocks = sub.blocks || [{ type: "text", content: sub.content || "" }];
+
+                        // Offset for subsection = section offset + section's own blocks + previous subs
+                        let subOffset = addCounts(sectionOffset, countInBlocks(blocks));
+                        for (let j = 0; j < subIdx; j++) {
+                          subOffset = addCounts(subOffset, countInSub(section.subs[j]));
+                        }
+
                         return (
                           <div key={subIdx} className="bg-gray-50 rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
@@ -149,6 +198,7 @@ export default function BodyPanel() {
                               <SectionEditor
                                 blocks={subBlocks}
                                 onChange={(newBlocks) => updateSubsection(sIdx, subIdx, "blocks", newBlocks)}
+                                figureOffset={subOffset}
                               />
                             </div>
 
@@ -158,6 +208,13 @@ export default function BodyPanel() {
                                 {sub.subs.map((subsub, subsubIdx) => {
                                   const subsubBlocks =
                                     subsub.blocks || [{ type: "text", content: subsub.content || "" }];
+
+                                  // Offset for sub-subsection = sub offset + sub's own blocks + previous subsubs
+                                  let subsubOffset = addCounts(subOffset, countInBlocks(subBlocks));
+                                  for (let k = 0; k < subsubIdx; k++) {
+                                    subsubOffset = addCounts(subsubOffset, countInBlocks((sub.subs[k] || {}).blocks));
+                                  }
+
                                   return (
                                     <div
                                       key={subsubIdx}
@@ -202,6 +259,7 @@ export default function BodyPanel() {
                                             newBlocks
                                           )
                                         }
+                                        figureOffset={subsubOffset}
                                       />
                                     </div>
                                   );
