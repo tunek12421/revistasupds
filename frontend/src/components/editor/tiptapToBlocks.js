@@ -8,18 +8,54 @@ import Superscript from "@tiptap/extension-superscript";
 import Paragraph from "@tiptap/extension-paragraph";
 import { Node } from "@tiptap/core";
 
+// Values are stored in centimeters for print-oriented editorial control.
+const FIRST_LINE_INDENT_CM = 1.25;
+const BLOCK_INDENT_CM = 2.5;
+const BASE_FONT_SIZE_PX = 13.333;
+const PX_PER_CM = 37.7952755906;
+
+function toIndentCm(value) {
+  if (!value) return 0;
+  const raw = String(value).trim();
+  const numeric = Number.parseFloat(raw);
+  if (!Number.isFinite(numeric)) return 0;
+  if (raw.endsWith("cm")) return numeric;
+  if (raw.endsWith("mm")) return numeric / 10;
+  if (raw.endsWith("em")) return (numeric * BASE_FONT_SIZE_PX) / PX_PER_CM;
+  if (raw.endsWith("px") || /^\d+(\.\d+)?$/.test(raw)) {
+    return numeric / PX_PER_CM;
+  }
+  return numeric;
+}
+
+function formatIndentCm(value) {
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded}cm`;
+}
+
 const IndentParagraph = Paragraph.extend({
   addAttributes() {
     return {
-      indent: {
+      firstLineIndent: {
         default: 0,
         parseHTML: element => {
-          const indent = element.style.marginLeft || element.style.textIndent;
-          return indent ? parseInt(indent, 10) : 0;
+          const indent = element.style.textIndent;
+          return toIndentCm(indent);
         },
         renderHTML: attributes => {
-          if (!attributes.indent) return {};
-          return { style: `text-indent: ${attributes.indent}px` };
+          if (!attributes.firstLineIndent) return {};
+          return { style: `text-indent: ${formatIndentCm(attributes.firstLineIndent || FIRST_LINE_INDENT_CM)}` };
+        },
+      },
+      blockIndent: {
+        default: 0,
+        parseHTML: element => {
+          const indent = element.style.marginLeft;
+          return toIndentCm(indent);
+        },
+        renderHTML: attributes => {
+          if (!attributes.blockIndent) return {};
+          return { style: `margin-left: ${formatIndentCm(attributes.blockIndent || BLOCK_INDENT_CM)}` };
         },
       },
     };

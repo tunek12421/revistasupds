@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -33,20 +34,62 @@ import {
   Redo2,
 } from "lucide-react";
 
-// Extension for paragraph indentation (APA style typically uses text-indent for the first line or padding for the whole block)
+// Extension for independent paragraph indentation modes.
+// Values are stored in centimeters for print-oriented editorial control.
+const DEFAULT_FIRST_LINE_CM = 1.25;
+const DEFAULT_BLOCK_CM = 2.5;
+const BASE_FONT_SIZE_PX = 13.333;
+const PX_PER_CM = 37.7952755906;
+const MAX_INDENT_CM = 6;
+
+function clampIndentCm(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(MAX_INDENT_CM, n));
+}
+
+function toIndentCm(value) {
+  if (!value) return 0;
+  const raw = String(value).trim();
+  const numeric = Number.parseFloat(raw);
+  if (!Number.isFinite(numeric)) return 0;
+  if (raw.endsWith("cm")) return numeric;
+  if (raw.endsWith("mm")) return numeric / 10;
+  if (raw.endsWith("em")) return (numeric * BASE_FONT_SIZE_PX) / PX_PER_CM;
+  if (raw.endsWith("px") || /^\d+(\.\d+)?$/.test(raw)) {
+    return numeric / PX_PER_CM;
+  }
+  return clampIndentCm(numeric);
+}
+
+function formatIndentCm(value) {
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded}cm`;
+}
+
 const IndentParagraph = Paragraph.extend({
   addAttributes() {
     return {
-      indent: {
+      firstLineIndent: {
         default: 0,
         parseHTML: element => {
-          const indent = element.style.marginLeft || element.style.textIndent;
-          return indent ? parseInt(indent, 10) : 0;
+          const indent = element.style.textIndent;
+          return toIndentCm(indent);
         },
         renderHTML: attributes => {
-          if (!attributes.indent) return {};
-          // Applying text-indent for APA first-line indent, or margin for block indent
-          return { style: `text-indent: ${attributes.indent}px` };
+          if (!attributes.firstLineIndent) return {};
+          return { style: `text-indent: ${formatIndentCm(attributes.firstLineIndent)}` };
+        },
+      },
+      blockIndent: {
+        default: 0,
+        parseHTML: element => {
+          const indent = element.style.marginLeft;
+          return toIndentCm(indent);
+        },
+        renderHTML: attributes => {
+          if (!attributes.blockIndent) return {};
+          return { style: `margin-left: ${formatIndentCm(attributes.blockIndent)}` };
         },
       },
     };
@@ -54,26 +97,28 @@ const IndentParagraph = Paragraph.extend({
   addCommands() {
     return {
       ...this.parent?.(),
-      indent: () => ({ tr, state, dispatch }) => {
-        const { selection } = state;
-        tr = tr.setSelection(selection);
-        tr = this.editor.commands.updateAttributes('paragraph', { indent: 36 }); 
-        return true;
+      toggleFirstLineIndent: () => ({ editor }) => {
+        const currentIndent = editor.getAttributes("paragraph").firstLineIndent || 0;
+        return editor.commands.updateAttributes('paragraph', {
+          firstLineIndent: currentIndent > 0 ? 0 : DEFAULT_FIRST_LINE_CM,
+        });
       },
-      outdent: () => ({ tr, state, dispatch }) => {
-        const { selection } = state;
-        tr = tr.setSelection(selection);
-        tr = this.editor.commands.updateAttributes('paragraph', { indent: 0 });
-        return true;
+      toggleBlockIndent: () => ({ editor }) => {
+        const currentIndent = editor.getAttributes("paragraph").blockIndent || 0;
+        return editor.commands.updateAttributes('paragraph', {
+          blockIndent: currentIndent > 0 ? 0 : DEFAULT_BLOCK_CM,
+        });
       },
-      toggleIndent: () => ({ editor }) => {
-        const currentIndent = editor.getAttributes("paragraph").indent || 0;
-        if (currentIndent > 0) {
-          return editor.commands.outdent();
-        } else {
-          return editor.commands.indent();
-        }
-      }
+      setFirstLineIndentCm: (value) => ({ editor }) => {
+        return editor.commands.updateAttributes('paragraph', {
+          firstLineIndent: clampIndentCm(value),
+        });
+      },
+      setBlockIndentCm: (value) => ({ editor }) => {
+        return editor.commands.updateAttributes('paragraph', {
+          blockIndent: clampIndentCm(value),
+        });
+      },
     };
   },
 });
@@ -161,7 +206,49 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false,
     },
   });
 
+  const [firstLineCmInput, setFirstLineCmInput] = useState(String(DEFAULT_FIRST_LINE_CM));
+  const [blockCmInput, setBlockCmInput] = useState(String(DEFAULT_BLOCK_CM));
+
+  useEffect(() => {
+    if (!editor) return;
+
+    const syncIndentInputs = () => {
+      const attrs = editor.getAttributes("paragraph");
+      const firstLine = attrs.firstLineIndent || 0;
+      const block = attrs.blockIndent || 0;
+      setFirstLineCmInput(String(Math.round(firstLine * 100) / 100));
+      setBlockCmInput(String(Math.round(block * 100) / 100));
+    };
+
+    syncIndentInputs();
+    editor.on("selectionUpdate", syncIndentInputs);
+    editor.on("update", syncIndentInputs);
+
+    return () => {
+      editor.off("selectionUpdate", syncIndentInputs);
+      editor.off("update", syncIndentInputs);
+    };
+  }, [editor]);
+
   if (!editor) return null;
+
+  const parseCmInput = (value, fallback = 0) => {
+    const parsed = Number.parseFloat(String(value).replace(",", "."));
+    if (!Number.isFinite(parsed)) return fallback;
+    return clampIndentCm(parsed);
+  };
+
+  const applyFirstLineCm = () => {
+    const cm = parseCmInput(firstLineCmInput, 0);
+    setFirstLineCmInput(String(cm));
+    editor.chain().focus().setFirstLineIndentCm(cm).run();
+  };
+
+  const applyBlockCm = () => {
+    const cm = parseCmInput(blockCmInput, 0);
+    setBlockCmInput(String(cm));
+    editor.chain().focus().setBlockIndentCm(cm).run();
+  };
 
   const insertFigure = (tipo) => {
     editor
@@ -266,12 +353,55 @@ export default function SectionEditor({ blocks, onChange, hideFootnotes = false,
           <AlignJustify size={14} />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleIndent().run()}
-          active={editor.getAttributes("paragraph").indent > 0}
-          title="Sangría APA (primera línea)"
+          onClick={() => editor.chain().focus().toggleFirstLineIndent().run()}
+          active={editor.getAttributes("paragraph").firstLineIndent > 0}
+          title="Sangría de primera línea"
         >
           <Indent size={14} />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBlockIndent().run()}
+          active={editor.getAttributes("paragraph").blockIndent > 0}
+          title="Sangría de bloque"
+        >
+          <Outdent size={14} />
+        </ToolbarButton>
+        <div className="mx-1 flex items-center gap-1 text-[11px] text-gray-600">
+          <span>1ra:</span>
+          <input
+            type="number"
+            min="0"
+            max={String(MAX_INDENT_CM)}
+            step="0.1"
+            value={firstLineCmInput}
+            onChange={(e) => setFirstLineCmInput(e.target.value)}
+            onBlur={applyFirstLineCm}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyFirstLineCm();
+            }}
+            className="h-7 w-14 rounded border border-gray-300 px-1 text-right text-xs"
+            title="Sangría primera línea (cm)"
+          />
+          <span>cm</span>
+        </div>
+        <div className="mx-1 flex items-center gap-1 text-[11px] text-gray-600">
+          <span>Bloque:</span>
+          <input
+            type="number"
+            min="0"
+            max={String(MAX_INDENT_CM)}
+            step="0.1"
+            value={blockCmInput}
+            onChange={(e) => setBlockCmInput(e.target.value)}
+            onBlur={applyBlockCm}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyBlockCm();
+            }}
+            className="h-7 w-14 rounded border border-gray-300 px-1 text-right text-xs"
+            title="Sangría de bloque (cm)"
+          />
+          <span>cm</span>
+        </div>
 
         <Divider />
 
