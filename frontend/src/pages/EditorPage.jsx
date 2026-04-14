@@ -9,6 +9,7 @@ import {
   PanelRightOpen,
   Loader2,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import useArticleStore from "../stores/articleStore";
 import api from "../lib/api";
@@ -325,6 +326,17 @@ export default function EditorPage() {
                 <Check size={14} />
                 {saveMessage}
               </span>
+            )}
+            {showPreview && (
+              <button
+                onClick={handlePreview}
+                disabled={generatingPreview}
+                className="flex items-center gap-1.5 text-sm font-medium text-[#223b87] hover:bg-[#223b87]/10 border border-[#223b87]/30 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
+                title="Actualizar / Recargar vista previa"
+              >
+                <RefreshCw size={15} className={generatingPreview ? "animate-spin" : ""} />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
             )}
             <button
               onClick={() => {

@@ -90,8 +90,8 @@ CSS = (
     ".subsub-title{font-family:Arial,sans-serif;font-size:10pt;font-weight:600;font-style:italic;color:#3a4f8a;margin-top:10px;margin-bottom:4px}"
     ".body-p{font-size:10pt;text-align:justify;line-height:1.6;margin-bottom:8px;color:#111}"
     ".body-wrap p{font-size:10pt;text-align:justify;line-height:1.6;margin-bottom:8px;color:#111}"
-    ".body-wrap strong{font-weight:700}"
-    ".body-wrap em{font-style:italic}"
+    "strong{font-weight:700}"
+    "em{font-style:italic}"
     ".body-wrap u{text-decoration:underline}"
     ".body-wrap s{text-decoration:line-through}"
     ".body-wrap sub{font-size:7pt;vertical-align:sub}"
@@ -551,13 +551,13 @@ def build_html(d: dict[str, Any]) -> str:
     # The cover (.page, @page main-page) shows pageStart hardcoded.
     # Body pages (.page-inner, @page b-page) use CSS counter(page).
     # The cover consumes page counter = pageStart, so the first body
-    # page becomes pageStart + 1. Set counter-reset to pageStart.
+    # page becomes pageStart + 1. Set counter-reset to pageStart in main-page
     reset_val = int(d.get("pageStart", 1))
     
     html_doc = (
         f"<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">"
         f"<style>{CSS}</style>"
-        f"<style>@media print {{ body {{ counter-reset: page {reset_val}; }} }}</style>"
+        f"<style>@page main-page {{ counter-reset: page {reset_val}; }}</style>"
         f"</head><body>{p1}{p2}</body></html>"
     )
     return html_doc
