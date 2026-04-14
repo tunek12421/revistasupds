@@ -6,7 +6,25 @@ const useAuthStore = create((set, get) => ({
   token: localStorage.getItem("token") || null,
   isAuthenticated: !!localStorage.getItem("token"),
   loading: false,
+  initializing: true,
   error: null,
+
+  initializeAuth: async () => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      set({ token, initializing: true });
+      try {
+        const res = await api.get("/auth/me");
+        set({ user: res.data, isAuthenticated: true, initializing: false });
+      } catch {
+        // Token is invalid or expired
+        localStorage.removeItem("token");
+        set({ user: null, token: null, isAuthenticated: false, initializing: false });
+      }
+    } else {
+      set({ initializing: false });
+    }
+  },
 
   login: async (email, password) => {
     set({ loading: true, error: null });

@@ -40,6 +40,8 @@ export default function EditorPage() {
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [warningModal, setWarningModal] = useState(null);
   const [saveMessage, setSaveMessage] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedState, setLastSavedState] = useState(null);
   const contentRef = useRef(null);
 
   const store = useArticleStore();
@@ -54,6 +56,9 @@ export default function EditorPage() {
         .then((res) => {
           if (res.data.data) loadArticle(res.data.data);
           setArticleId(res.data.id);
+          const currentState = collect();
+          setLastSavedState(JSON.stringify(currentState));
+          setHasUnsavedChanges(false);
         })
         .catch(() => {
           alert("No se pudo cargar el artículo");
@@ -62,9 +67,40 @@ export default function EditorPage() {
         .finally(() => setLoadingArticle(false));
     } else {
       reset();
+      const currentState = collect();
+      setLastSavedState(JSON.stringify(currentState));
+      setHasUnsavedChanges(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Monitor changes in the store
+  useEffect(() => {
+    if (lastSavedState === null) return;
+    const currentState = JSON.stringify(collect());
+    setHasUnsavedChanges(currentState !== lastSavedState);
+  }, [
+    store.pageStart,
+    store.pageEnd,
+    store.docType,
+    store.titleEs,
+    store.titleEn,
+    store.doi,
+    store.citeRef,
+    store.volume,
+    store.number,
+    store.dateReceived,
+    store.dateAccepted,
+    store.datePublished,
+    store.lic,
+    store.authors,
+    store.absEs,
+    store.kwEs,
+    store.absEn,
+    store.kwEn,
+    store.sections,
+    store.refs,
+  ]);
 
   // Validate current step — returns an array of warnings (empty = ok)
   const validateStep = (s) => {
@@ -142,7 +178,6 @@ export default function EditorPage() {
   };
 
   const goToNextStep = async () => {
-    await autoSave();
     setStep((s) => Math.min(s + 1, TOTAL_STEPS));
     contentRef.current?.scrollTo(0, 0);
   };
@@ -186,6 +221,9 @@ export default function EditorPage() {
         setArticleId(res.data.id);
         window.history.replaceState(null, "", `/editor/${res.data.id}`);
       }
+      const currentState = collect();
+      setLastSavedState(JSON.stringify(currentState));
+      setHasUnsavedChanges(false);
       setSaveMessage("Guardado correctamente");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch {
@@ -309,7 +347,22 @@ export default function EditorPage() {
         <div className="max-w-full mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => {
+                if (hasUnsavedChanges) {
+                  setWarningModal({
+                    title: "Cambios sin guardar",
+                    messages: ["Tienes cambios sin guardar. ¿Estás seguro de que deseas salir?"],
+                    continueLabel: "Salir sin guardar",
+                    onContinue: () => {
+                      setWarningModal(null);
+                      navigate("/dashboard");
+                    },
+                    onCancel: () => setWarningModal(null),
+                  });
+                } else {
+                  navigate("/dashboard");
+                }
+              }}
               className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#223b87] transition"
             >
               <ArrowLeft size={16} />
